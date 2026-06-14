@@ -1,0 +1,14 @@
+{
+  "crop": {
+    "x": 100,
+    "y": 50,
+    "width": 720,
+    "height": 1280
+  },
+
+  "overlay": {
+    "image": "assets/logo.png",
+    "x": 20,
+    "y": 20
+  }
+}

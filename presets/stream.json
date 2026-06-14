@@ -1,0 +1,45 @@
+{
+  "width": 1080,
+  "height": 1920,
+
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+
+      "width": 1080,
+      "height": 1920,
+
+      "blur": 30
+    },
+
+    {
+      "id": "gameplay",
+      "type": "gameplay",
+
+      "x": 40,
+      "y": 600,
+
+      "width": 1000,
+      "height": 560
+    },
+
+    {
+      "id": "facecam",
+      "type": "facecam",
+
+      "x": 40,
+      "y": 80,
+
+      "width": 400,
+      "height": 400,
+
+      "crop": {
+        "x": 1020,
+        "y": 520,
+        "width": 320,
+        "height": 320
+      }
+    }
+  ]
+}
