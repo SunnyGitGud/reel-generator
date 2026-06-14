@@ -77,6 +77,19 @@ func (c CropPercent) Build() string {
 	return fmt.Sprintf("crop=%d:%d:%d:%d", W, H, X, Y)
 }
 
+type DrawBox struct {
+	X         int    // X coordinate
+	Y         int    // Y coordinate
+	Width     int    // Width of box
+	Height    int    // Height of box
+	Color     string // Color (e.g., "white", "0xFFFFFF")
+	Thickness int    // Border thickness in pixels
+}
+
+func (d DrawBox) Build() string {
+	return fmt.Sprintf("drawbox=x=%d:y=%d:w=%d:h=%d:color=%s:thickness=%d", d.X, d.Y, d.Width, d.Height, d.Color, d.Thickness)
+}
+
 func BuildFilterChain(filters []Filter) string {
 	var parts []string
 

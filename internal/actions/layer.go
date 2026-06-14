@@ -42,10 +42,6 @@ func NewLayersWithDimensions(inputWidth, inputHeight int) []RenderLayer {
 	}
 }
 
-// ----------------------------------------------------
-// BACKGROUND
-// ----------------------------------------------------
-
 func NewBackgroundLayer() RenderLayer {
 	return RenderLayer{
 		Name:       "bg",
@@ -66,10 +62,6 @@ func NewBackgroundLayer() RenderLayer {
 		},
 	}
 }
-
-// ----------------------------------------------------
-// FACECAM (with percentage-based cropping)
-// ----------------------------------------------------
 
 func NewFacecamLayer(inputWidth, inputHeight int) RenderLayer {
 	return RenderLayer{
@@ -93,13 +85,18 @@ func NewFacecamLayer(inputWidth, inputHeight int) RenderLayer {
 				Width:  740,
 				Height: 574,
 			},
+
+			ffmpeg.DrawBox{
+				X:         0,
+				Y:         0,
+				Width:     740,
+				Height:    574,
+				Color:     "white",
+				Thickness: 4,
+			},
 		},
 	}
 }
-
-// ----------------------------------------------------
-// GAMEPLAY (with percentage-based sizing)
-// ----------------------------------------------------
 
 func NewGameplayLayer(inputWidth, inputHeight int) RenderLayer {
 	return RenderLayer{
