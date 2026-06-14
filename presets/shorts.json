@@ -1,14 +1,31 @@
 {
   "crop": {
-    "x": 100,
-    "y": 50,
-    "width": 720,
-    "height": 1280
+    "width": 1080,
+    "height": 1920
   },
-
   "overlay": {
     "image": "assets/logo.png",
     "x": 20,
     "y": 20
+  },
+  "facecam": {
+    "x": 170,
+    "y": 60,
+    "width": 740,
+    "height": 574,
+    "crop_x_percent": 0.697,
+    "crop_y_percent": 0.6,
+    "crop_width_percent": 0.29,
+    "crop_height_percent": 0.426
+  },
+  "gameplay": {
+    "x": -250,
+    "y": 450,
+    "width": 1800,
+    "height": 1012,
+    "crop_x_percent": 0,
+    "crop_y_percent": 0,
+    "crop_width_percent": 1.0,
+    "crop_height_percent": 1.0
   }
 }

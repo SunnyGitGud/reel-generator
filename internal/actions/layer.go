@@ -33,6 +33,15 @@ func (r RenderLayer) GetFilters() []ffmpeg.Filter {
 	return r.Filters
 }
 
+// NewLayersWithDimensions creates layers that scale based on input video dimensions
+func NewLayersWithDimensions(inputWidth, inputHeight int) []RenderLayer {
+	return []RenderLayer{
+		NewBackgroundLayer(),
+		NewGameplayLayer(inputWidth, inputHeight),
+		NewFacecamLayer(inputWidth, inputHeight),
+	}
+}
+
 // ----------------------------------------------------
 // BACKGROUND
 // ----------------------------------------------------
@@ -59,10 +68,10 @@ func NewBackgroundLayer() RenderLayer {
 }
 
 // ----------------------------------------------------
-// FACECAM
+// FACECAM (with percentage-based cropping)
 // ----------------------------------------------------
 
-func NewFacecamLayer() RenderLayer {
+func NewFacecamLayer(inputWidth, inputHeight int) RenderLayer {
 	return RenderLayer{
 		Name:       "cam",
 		InputIndex: 0,
@@ -71,26 +80,28 @@ func NewFacecamLayer() RenderLayer {
 		Y: 60,
 
 		Filters: []ffmpeg.Filter{
-			ffmpeg.Crop{
-				X:      1340,
-				Y:      648,
-				Width:  557,
-				Height: 460,
+			ffmpeg.CropPercent{
+				XPercent:      0.697, // ~70% from left (1340/1920)
+				YPercent:      0.6,   // 60% from top (648/1080)
+				WidthPercent:  0.29,  // ~29% of width (557/1920)
+				HeightPercent: 0.426, // ~42.6% of height (460/1080)
+				InputWidth:    inputWidth,
+				InputHeight:   inputHeight,
 			},
 
 			ffmpeg.Scale{
 				Width:  740,
-				Height: 574, // preserve aspect ratio
+				Height: 574,
 			},
 		},
 	}
 }
 
 // ----------------------------------------------------
-// GAMEPLAY
+// GAMEPLAY (with percentage-based sizing)
 // ----------------------------------------------------
 
-func NewGameplayLayer() RenderLayer {
+func NewGameplayLayer(inputWidth, inputHeight int) RenderLayer {
 	return RenderLayer{
 		Name:       "game",
 		InputIndex: 0,

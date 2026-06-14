@@ -9,12 +9,13 @@ import (
 )
 
 func main() {
+	// Standard input dimensions (1920x1080 for most streamers)
+	// These can be made configurable from preset later
+	inputWidth := 1920
+	inputHeight := 1080
 
-	concreteLayeres := []actions.RenderLayer{
-		actions.NewBackgroundLayer(),
-		actions.NewGameplayLayer(),
-		actions.NewFacecamLayer(),
-	}
+	// Create layers with dimension-aware cropping
+	concreteLayeres := actions.NewLayersWithDimensions(inputWidth, inputHeight)
 
 	// Convert to interface slice
 	layers := make([]ffmpeg.RenderLayer, len(concreteLayeres))

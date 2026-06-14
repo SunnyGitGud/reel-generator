@@ -60,6 +60,23 @@ func (s ScaleToFill) Build() string {
 	return fmt.Sprintf("scale=-1:%d,crop=%d:%d", s.Height, s.Width, s.Height)
 }
 
+type CropPercent struct {
+	XPercent      float64 // 0.0 to 1.0
+	YPercent      float64 // 0.0 to 1.0
+	WidthPercent  float64 // 0.0 to 1.0
+	HeightPercent float64 // 0.0 to 1.0
+	InputWidth    int
+	InputHeight   int
+}
+
+func (c CropPercent) Build() string {
+	X := int(float64(c.InputWidth) * c.XPercent)
+	Y := int(float64(c.InputHeight) * c.YPercent)
+	W := int(float64(c.InputWidth) * c.WidthPercent)
+	H := int(float64(c.InputHeight) * c.HeightPercent)
+	return fmt.Sprintf("crop=%d:%d:%d:%d", W, H, X, Y)
+}
+
 func BuildFilterChain(filters []Filter) string {
 	var parts []string
 

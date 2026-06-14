@@ -11,29 +11,43 @@ type Overlay struct {
 	Y     int    `json:"y"`
 }
 
+type LayerConfig struct {
+	X                 int     `json:"x"`
+	Y                 int     `json:"y"`
+	Width             int     `json:"width"`
+	Height            int     `json:"height"`
+	CropXPercent      float64 `json:"crop_x_percent"`
+	CropYPercent      float64 `json:"crop_y_percent"`
+	CropWidthPercent  float64 `json:"crop_width_percent"`
+	CropHeightPercent float64 `json:"crop_height_percent"`
+}
+
 type Preset struct {
-	Crop    Crop    `json:"crop"`
-	Overlay Overlay `json:"overlay"`
+	Crop     Crop        `json:"crop"`
+	Overlay  Overlay     `json:"overlay"`
+	Facecam  LayerConfig `json:"facecam"`
+	Gameplay LayerConfig `json:"gameplay"`
 }
 
 type Layer struct {
-	Type   string
-	Source string
+	ID string `json:"id"`
 
-	X int
-	Y int
+	Type string `json:"type"`
 
-	Width  int
-	Height int
+	X int `json:"x"`
+	Y int `json:"y"`
 
-	Blur int
+	Width  int `json:"width"`
+	Height int `json:"height"`
 
-	Crop *Crop
+	Blur int `json:"blur"`
+
+	Crop *Crop `json:"crop,omitempty"`
 }
 
 type Composition struct {
-	Width  int
-	Height int
+	Width  int `json:"width"`
+	Height int `json:"height"`
 
-	Layers []Layer
+	Layers []Layer `json:"layers"`
 }
