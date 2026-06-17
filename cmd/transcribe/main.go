@@ -25,7 +25,7 @@ func main() {
 	language := flag.String("lang", "en", "Language code (e.g., en, es, fr, de)")
 	outputDir := flag.String("output", "output", "Output directory for results")
 	task := flag.String("task", "transcribe", "Task: transcribe or translate")
-	device := flag.String("device", "cpu", "Device: cpu or cuda")
+	device := flag.String("device", "cuda", "Device: cpu or cuda")
 	format := flag.String("format", "all", "Output format: txt, srt, or all")
 	verbose := flag.Bool("v", false, "Verbose output")
 

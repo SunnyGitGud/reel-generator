@@ -50,4 +50,12 @@ type Composition struct {
 	Height int `json:"height"`
 
 	Layers []Layer `json:"layers"`
+
+	Subtitle *SubtitleConfig `json:"subtitle,omitempty"` // Optional subtitle configuration
+}
+
+// SubtitleConfig defines subtitle layer configuration
+type SubtitleConfig struct {
+	SRTFile   string `json:"srt_file"`
+	StyleName string `json:"style_name"` // e.g., "tiktok", "youtube", "custom"
 }

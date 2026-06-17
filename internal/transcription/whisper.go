@@ -11,34 +11,34 @@ import (
 
 // Segment represents a single transcript segment from Whisper
 type Segment struct {
-	ID               int     `json:"id"`
-	Seek             int     `json:"seek"`
-	Start            float64 `json:"start"`
-	End              float64 `json:"end"`
-	Text             string  `json:"text"`
-	Tokens           []int   `json:"tokens"`
-	Temperature      float64 `json:"temperature"`
-	AvgLogprob       float64 `json:"avg_logprob"`
+	ID                int     `json:"id"`
+	Seek              int     `json:"seek"`
+	Start             float64 `json:"start"`
+	End               float64 `json:"end"`
+	Text              string  `json:"text"`
+	Tokens            []int   `json:"tokens"`
+	Temperature       float64 `json:"temperature"`
+	AvgLogprob        float64 `json:"avg_logprob"`
 	Compression_ratio float64 `json:"compression_ratio"`
-	NoSpeechProb    float64 `json:"no_speech_prob"`
+	NoSpeechProb      float64 `json:"no_speech_prob"`
 }
 
 // TranscriptResult represents the complete transcript from Whisper
 type TranscriptResult struct {
-	Task     string     `json:"task"`
-	Language string     `json:"language"`
-	Duration float64    `json:"duration"`
-	Segments []Segment  `json:"segments"`
-	Text     string     `json:"text"`
+	Task     string    `json:"task"`
+	Language string    `json:"language"`
+	Duration float64   `json:"duration"`
+	Segments []Segment `json:"segments"`
+	Text     string    `json:"text"`
 }
 
 // TranscriptionOptions holds configuration for Whisper
 type TranscriptionOptions struct {
-	Model      string // tiny, base, small, medium, large
-	Language   string // ISO-639-1 code (e.g., "en", "de")
-	Device     string // "cpu" or "cuda"
-	TaskType   string // "transcribe" or "translate"
-	OutputDir  string // Directory to save output files
+	Model     string // tiny, base, small, medium, large
+	Language  string // ISO-639-1 code (e.g., "en", "de")
+	Device    string // "cpu" or "cuda"
+	TaskType  string // "transcribe" or "translate"
+	OutputDir string // Directory to save output files
 }
 
 // DefaultOptions returns sensible defaults for transcription
@@ -46,7 +46,7 @@ func DefaultOptions() TranscriptionOptions {
 	return TranscriptionOptions{
 		Model:     "base",
 		Language:  "en",
-		Device:    "cpu",
+		Device:    "cuda",
 		TaskType:  "transcribe",
 		OutputDir: "output",
 	}

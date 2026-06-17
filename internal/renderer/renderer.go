@@ -15,9 +15,9 @@ func Render(
 	args := []string{
 		"-i", input,
 		"-filter_complex", filterGraph,
-		"-map", "[out]",
-		"-map", "0:a",
 		"-c:a", "aac",
+		"-c:v", "libx264",
+		"-preset", "fast",
 		"-y",
 		output,
 	}

@@ -13,10 +13,10 @@
     "y": 60,
     "width": 740,
     "height": 574,
-    "crop_x_percent": 0.697,
-    "crop_y_percent": 0.6,
-    "crop_width_percent": 0.29,
-    "crop_height_percent": 0.426
+"crop_x_percent": 0.697,
+"crop_y_percent": 0.6,
+"crop_width_percent": 0.549,
+"crop_height_percent": 0.426
   },
   "gameplay": {
     "x": -250,

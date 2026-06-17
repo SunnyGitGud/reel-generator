@@ -73,9 +73,9 @@ func NewFacecamLayer(inputWidth, inputHeight int) RenderLayer {
 
 		Filters: []ffmpeg.Filter{
 			ffmpeg.CropPercent{
-				XPercent:      0.697, // ~70% from left (1340/1920)
+				XPercent:      0.82,  // ~70% from left (1340/1920)
 				YPercent:      0.6,   // 60% from top (648/1080)
-				WidthPercent:  0.29,  // ~29% of width (557/1920)
+				WidthPercent:  0.31,  // ~29% of width (557/1920)
 				HeightPercent: 0.426, // ~42.6% of height (460/1080)
 				InputWidth:    inputWidth,
 				InputHeight:   inputHeight,

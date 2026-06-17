@@ -64,7 +64,7 @@ func ExampleTranscribeMultipleLanguages() {
 func ExampleTranscribeWithTranslation() {
 	opts := DefaultOptions()
 	opts.Model = "base"
-	opts.Language = "es" // Spanish
+	opts.Language = "es"        // Spanish
 	opts.TaskType = "translate" // Translate to English
 
 	result, err := TranscribeAudio("videos/input.mp4", opts)
