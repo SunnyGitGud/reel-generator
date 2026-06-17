@@ -27,6 +27,7 @@ func main() {
 	task := flag.String("task", "transcribe", "Task: transcribe or translate")
 	device := flag.String("device", "cuda", "Device: cpu or cuda")
 	format := flag.String("format", "all", "Output format: txt, srt, or all")
+	romanize := flag.Bool("romanize", false, "Romanize Devanagari Hindi text to Hinglish")
 	verbose := flag.Bool("v", false, "Verbose output")
 
 	flag.Parse()
@@ -48,6 +49,7 @@ func main() {
 		Device:    *device,
 		TaskType:  *task,
 		OutputDir: *outputDir,
+		Romanize:  *romanize,
 	}
 
 	if *verbose {

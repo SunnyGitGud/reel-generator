@@ -94,7 +94,7 @@ func TikTokStyle() SubtitleStyle {
 		Alignment:    2, // Bottom center
 		MarginL:      10,
 		MarginR:      10,
-		MarginV:      20, // Bottom margin
+		MarginV:      50, // Bottom margin
 		Encoding:     1,  // Unicode
 	}
 }

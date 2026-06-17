@@ -9,7 +9,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,100,100,0,0,1,3.0,2.0,2,10,10,20,1
+Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,100,100,0,0,1,3.0,2.0,2,10,10,30,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -31,9 +31,14 @@ Dialogue: 0,0:00:18.87,0:00:19.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}so bad?
 Dialogue: 0,0:00:19.50,0:00:20.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}Sivran, I think
 Dialogue: 0,0:00:20.25,0:00:21.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}you already have
 Dialogue: 0,0:00:21.00,0:00:21.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}brown knees.
-Dialogue: 0,0:00:21.50,0:00:23.31,TikTok,,0,0,0,,{%c&H00B4E7FF&}You didn't even
-Dialogue: 0,0:00:23.31,0:00:25.13,TikTok,,0,0,0,,{%c&H00B4E7FF&}think you should
-Dialogue: 0,0:00:25.13,0:00:26.95,TikTok,,0,0,0,,{%c&H00B4E7FF&}meet a guy
-Dialogue: 0,0:00:26.95,0:00:28.77,TikTok,,0,0,0,,{%c&H00B4E7FF&}b****g who says
-Dialogue: 0,0:00:28.77,0:00:30.59,TikTok,,0,0,0,,{%c&H00B4E7FF&}he's got brown
-Dialogue: 0,0:00:30.59,0:00:31.19,TikTok,,0,0,0,,{%c&H00B4E7FF&}knees.
+Dialogue: 0,0:00:22.21,0:00:24.53,TikTok,,0,0,0,,{%c&H00B4E7FF&}SHI´IVAN
+Dialogue: 0,0:00:26.37,0:00:26.80,TikTok,,0,0,0,,{%c&H00B4E7FF&}What did I
+Dialogue: 0,0:00:26.80,0:00:27.23,TikTok,,0,0,0,,{%c&H00B4E7FF&}say right now,
+Dialogue: 0,0:00:27.23,0:00:27.37,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro...
+Dialogue: 0,0:00:27.39,0:00:27.80,TikTok,,0,0,0,,{%c&H00B4E7FF&}All I know
+Dialogue: 0,0:00:27.80,0:00:28.21,TikTok,,0,0,0,,{%c&H00B4E7FF&}is how many
+Dialogue: 0,0:00:28.21,0:00:28.61,TikTok,,0,0,0,,{%c&H00B4E7FF&}people are looking
+Dialogue: 0,0:00:28.61,0:00:29.02,TikTok,,0,0,0,,{%c&H00B4E7FF&}at you right
+Dialogue: 0,0:00:29.02,0:00:29.16,TikTok,,0,0,0,,{%c&H00B4E7FF&}now!
+Dialogue: 0,0:00:29.16,0:00:29.98,TikTok,,0,0,0,,{%c&H00B4E7FF&}Son of a
+Dialogue: 0,0:00:29.98,0:00:30.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}f**ker.

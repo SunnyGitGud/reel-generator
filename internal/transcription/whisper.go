@@ -39,16 +39,18 @@ type TranscriptionOptions struct {
 	Device    string // "cpu" or "cuda"
 	TaskType  string // "transcribe" or "translate"
 	OutputDir string // Directory to save output files
+	Romanize  bool   // Romanize Devanagari Hindi text to Hinglish
 }
 
 // DefaultOptions returns sensible defaults for transcription
 func DefaultOptions() TranscriptionOptions {
 	return TranscriptionOptions{
 		Model:     "base",
-		Language:  "en",
+		Language:  "auto",
 		Device:    "cuda",
 		TaskType:  "transcribe",
 		OutputDir: "output",
+		Romanize:  false,
 	}
 }
 
@@ -79,6 +81,14 @@ func TranscribeAudio(audioPath string, opts TranscriptionOptions) (*TranscriptRe
 	baseName := strings.TrimSuffix(filepath.Base(audioPath), filepath.Ext(audioPath))
 	jsonPath := filepath.Join(opts.OutputDir, baseName+".json")
 
+	// Post-process the JSON output to romanize Hindi Devanagari text if enabled
+	if opts.Romanize {
+		romanizeCmd := exec.Command("python", "internal/transcription/romanize.py", jsonPath)
+		if romanizeOutput, err := romanizeCmd.CombinedOutput(); err != nil {
+			fmt.Printf("Warning: Romanization post-processing failed: %v\nOutput: %s\n", err, string(romanizeOutput))
+		}
+	}
+
 	result, err := parseWhisperJSON(jsonPath)
 	if err != nil {
 		return nil, err
@@ -92,14 +102,22 @@ func buildWhisperCommand(audioPath string, opts TranscriptionOptions) *exec.Cmd 
 	args := []string{
 		audioPath,
 		"--model", opts.Model,
-		"--language", opts.Language,
+	}
+
+	if opts.Language != "" && opts.Language != "auto" {
+		args = append(args, "--language", opts.Language)
+	}
+
+	args = append(args,
 		"--device", opts.Device,
 		"--task", opts.TaskType,
 		"--output_format", "json",
 		"--output_dir", opts.OutputDir,
-	}
+	)
 
-	return exec.Command("whisper", args...)
+	cmd := exec.Command("whisper", args...)
+	cmd.Env = append(os.Environ(), "PYTHONIOENCODING=utf-8")
+	return cmd
 }
 
 // parseWhisperJSON reads and unmarshals the JSON output from Whisper
