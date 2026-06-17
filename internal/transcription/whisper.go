@@ -154,12 +154,61 @@ func (tr *TranscriptResult) SaveToFile(filePath string) error {
 	return os.WriteFile(filePath, []byte(tr.Text), 0644)
 }
 
-// SaveSegmentsToJSON saves segments in SRT-like format with timing
+// splitSegment splits a segment into sub-segments of at most maxWords
+func splitSegment(seg Segment, maxWords int) []Segment {
+	words := strings.Fields(seg.Text)
+	if len(words) <= maxWords {
+		return []Segment{seg}
+	}
+
+	var subSegs []Segment
+	totalWords := len(words)
+	totalDuration := seg.End - seg.Start
+
+	var currentStart = seg.Start
+	for i := 0; i < totalWords; i += maxWords {
+		endIdx := i + maxWords
+		if endIdx > totalWords {
+			endIdx = totalWords
+		}
+
+		chunkWords := words[i:endIdx]
+		chunkText := strings.Join(chunkWords, " ")
+		chunkWordCount := endIdx - i
+
+		chunkDuration := totalDuration * (float64(chunkWordCount) / float64(totalWords))
+		currentEnd := currentStart + chunkDuration
+
+		if endIdx == totalWords {
+			currentEnd = seg.End
+		}
+
+		subSegs = append(subSegs, Segment{
+			ID:    seg.ID,
+			Start: currentStart,
+			End:   currentEnd,
+			Text:  chunkText,
+		})
+
+		currentStart = currentEnd
+	}
+
+	return subSegs
+}
+
+// SaveSegmentsToSRT saves segments in SRT format with timing, splitting them to show at most 3 words at a time.
 func (tr *TranscriptResult) SaveSegmentsToSRT(filePath string) error {
 	var srt strings.Builder
 
+	// Split segments to have at most 3 words on screen at a time
+	const maxWords = 3
+	var allSegs []Segment
 	for _, seg := range tr.Segments {
-		srt.WriteString(fmt.Sprintf("%d\n", seg.ID+1))
+		allSegs = append(allSegs, splitSegment(seg, maxWords)...)
+	}
+
+	for i, seg := range allSegs {
+		srt.WriteString(fmt.Sprintf("%d\n", i+1))
 		srt.WriteString(fmt.Sprintf("%s --> %s\n", formatTime(seg.Start), formatTime(seg.End)))
 		srt.WriteString(fmt.Sprintf("%s\n\n", strings.TrimSpace(seg.Text)))
 	}

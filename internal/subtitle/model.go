@@ -76,7 +76,7 @@ func TikTokStyle() SubtitleStyle {
 	return SubtitleStyle{
 		Name:         "TikTok",
 		FontName:     "Montserrat",
-		FontSize:     60,
+		FontSize:     10,
 		PrimaryColor: ColorYellow,
 		OutlineColor: ColorBlack,
 		BackColor:    ColorBlack,

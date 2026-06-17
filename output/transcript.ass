@@ -9,14 +9,31 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: TikTok,Montserrat,60,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,100,100,0,0,1,3.0,2.0,2,10,10,20,1
+Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,100,100,0,0,1,3.0,2.0,2,10,10,20,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.00,0:00:05.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}But the people around me told me that if they meet someone, I think you should meet other people too.
-Dialogue: 0,0:00:05.50,0:00:08.30,TikTok,,0,0,0,,{%c&H00B4E7FF&}The people around me...
-Dialogue: 0,0:00:14.30,0:00:17.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}How did I read that so f**king act?
-Dialogue: 0,0:00:17.00,0:00:19.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}Bro, you wanna have brown knees so bad?
-Dialogue: 0,0:00:19.50,0:00:21.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}Sivran, I think you already have brown knees.
-Dialogue: 0,0:00:21.80,0:00:23.39,TikTok,,0,0,0,,{%c&H00B4E7FF&}The king of foxes
-Dialogue: 0,0:00:26.30,0:00:29.30,TikTok,,0,0,0,,{%c&H00B4E7FF&}It stings me to tears, dude
+Dialogue: 0,0:00:00.00,0:00:00.82,TikTok,,0,0,0,,{%c&H00B4E7FF&}But the people
+Dialogue: 0,0:00:00.82,0:00:01.64,TikTok,,0,0,0,,{%c&H00B4E7FF&}around me told
+Dialogue: 0,0:00:01.64,0:00:02.47,TikTok,,0,0,0,,{%c&H00B4E7FF&}me that if
+Dialogue: 0,0:00:02.47,0:00:03.29,TikTok,,0,0,0,,{%c&H00B4E7FF&}they meet someone,
+Dialogue: 0,0:00:03.29,0:00:04.12,TikTok,,0,0,0,,{%c&H00B4E7FF&}I think you
+Dialogue: 0,0:00:04.12,0:00:04.95,TikTok,,0,0,0,,{%c&H00B4E7FF&}should meet other
+Dialogue: 0,0:00:04.95,0:00:05.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}people too.
+Dialogue: 0,0:00:05.50,0:00:07.59,TikTok,,0,0,0,,{%c&H00B4E7FF&}The people around
+Dialogue: 0,0:00:07.59,0:00:08.30,TikTok,,0,0,0,,{%c&H00B4E7FF&}me...
+Dialogue: 0,0:00:14.30,0:00:15.31,TikTok,,0,0,0,,{%c&H00B4E7FF&}How did I
+Dialogue: 0,0:00:15.31,0:00:16.32,TikTok,,0,0,0,,{%c&H00B4E7FF&}read that so
+Dialogue: 0,0:00:16.32,0:00:17.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}f**king act?
+Dialogue: 0,0:00:17.00,0:00:17.93,TikTok,,0,0,0,,{%c&H00B4E7FF&}Bro, you wanna
+Dialogue: 0,0:00:17.93,0:00:18.87,TikTok,,0,0,0,,{%c&H00B4E7FF&}have brown knees
+Dialogue: 0,0:00:18.87,0:00:19.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}so bad?
+Dialogue: 0,0:00:19.50,0:00:20.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}Sivran, I think
+Dialogue: 0,0:00:20.25,0:00:21.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}you already have
+Dialogue: 0,0:00:21.00,0:00:21.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}brown knees.
+Dialogue: 0,0:00:21.50,0:00:23.31,TikTok,,0,0,0,,{%c&H00B4E7FF&}You didn't even
+Dialogue: 0,0:00:23.31,0:00:25.13,TikTok,,0,0,0,,{%c&H00B4E7FF&}think you should
+Dialogue: 0,0:00:25.13,0:00:26.95,TikTok,,0,0,0,,{%c&H00B4E7FF&}meet a guy
+Dialogue: 0,0:00:26.95,0:00:28.77,TikTok,,0,0,0,,{%c&H00B4E7FF&}b****g who says
+Dialogue: 0,0:00:28.77,0:00:30.59,TikTok,,0,0,0,,{%c&H00B4E7FF&}he's got brown
+Dialogue: 0,0:00:30.59,0:00:31.19,TikTok,,0,0,0,,{%c&H00B4E7FF&}knees.
