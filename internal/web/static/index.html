@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,13 +11,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-accent">⚡</span>
+                    <span class="logo-accent"></span>
                     <h2>Videdit Layout</h2>
                 </div>
                 <div class="status-badge" id="status-badge">Connected</div>
@@ -65,53 +67,66 @@
                     <label for="layer-zindex">Z-Index</label>
                     <input type="number" id="layer-zindex" name="zindex" min="0" max="99">
                 </div>
-                <div class="z-index-row" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div class="z-index-row"
+                    style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <label for="layer-scalemode" style="font-size: 0.8rem; color: var(--text-muted);">Scale Mode</label>
-                    <select id="layer-scalemode" name="scalemode" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; font-size: 0.875rem; width: 120px;">
+                    <select id="layer-scalemode" name="scalemode"
+                        style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; font-size: 0.875rem; width: 120px;">
                         <option value="stretch">Stretch</option>
                         <option value="fit">Fit (Contain)</option>
                         <option value="fill">Fill (Cover)</option>
                     </select>
                 </div>
-                <div class="z-index-row" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <label for="layer-lock-ar" style="font-size: 0.8rem; color: var(--text-muted);">Lock Aspect Ratio</label>
-                    <input type="checkbox" id="layer-lock-ar" name="lock_ar" style="width: 18px; height: 18px; cursor: pointer;">
+                <div class="z-index-row"
+                    style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <label for="layer-lock-ar" style="font-size: 0.8rem; color: var(--text-muted);">Lock Aspect
+                        Ratio</label>
+                    <input type="checkbox" id="layer-lock-ar" name="lock_ar"
+                        style="width: 18px; height: 18px; cursor: pointer;">
                 </div>
-                
+
                 <!-- Crop Settings Subpanel -->
-                <div id="crop-panel" style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
-                    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">Crop & Scale</h3>
+                <div id="crop-panel"
+                    style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
+                    <h3
+                        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">
+                        Crop & Scale</h3>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                                 <label for="layer-scale">Scale</label>
                                 <span id="layer-scale-val">100%</span>
                             </div>
                             <input type="range" id="layer-scale" min="10" max="300" value="100" style="width: 100%;">
                         </div>
                         <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                                 <label for="crop-left">Crop Left</label>
                                 <span id="crop-left-val">0%</span>
                             </div>
                             <input type="range" id="crop-left" min="0" max="100" value="0" style="width: 100%;">
                         </div>
                         <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                                 <label for="crop-right">Crop Right</label>
                                 <span id="crop-right-val">0%</span>
                             </div>
                             <input type="range" id="crop-right" min="0" max="100" value="0" style="width: 100%;">
                         </div>
                         <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                                 <label for="crop-top">Crop Top</label>
                                 <span id="crop-top-val">0%</span>
                             </div>
                             <input type="range" id="crop-top" min="0" max="100" value="0" style="width: 100%;">
                         </div>
                         <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                                 <label for="crop-bottom">Crop Bottom</label>
                                 <span id="crop-bottom-val">0%</span>
                             </div>
@@ -124,15 +139,15 @@
             <!-- Action Buttons -->
             <div class="sidebar-actions">
                 <button id="btn-refresh-preview" class="btn btn-secondary">
-                    <span class="btn-icon">🔄</span>
+                    <span class="btn-icon"></span>
                     Refresh Preview
                 </button>
                 <button id="btn-save-layout" class="btn btn-primary">
-                    <span class="btn-icon">💾</span>
+                    <span class="btn-icon"></span>
                     Save Layout
                 </button>
                 <button id="btn-export-layout" class="btn btn-secondary" style="border-color: var(--border-color);">
-                    <span class="btn-icon">📤</span>
+                    <span class="btn-icon"></span>
                     Export Layout
                 </button>
             </div>
@@ -167,6 +182,20 @@
                     <div id="canvas-subtitle-preview" class="canvas-subtitle"></div>
                 </div>
             </div>
+
+            <!-- Seekable Timeline -->
+            <div class="timeline-section">
+                <div class="timeline-header">
+                    <div class="timeline-title">🎬 Video Seek timeline</div>
+                    <div class="timeline-info" id="timeline-info">00:00.00 / 00:00.00</div>
+                </div>
+                <div class="timeline-track" id="timeline-track">
+                    <div class="timeline-thumbnails" id="timeline-thumbnails">
+                        <!-- Dynamic thumbnail images -->
+                    </div>
+                    <div class="timeline-playhead" id="timeline-playhead" style="left: 0%;"></div>
+                </div>
+            </div>
         </main>
 
         <!-- Subtitles Sidebar -->
@@ -191,7 +220,8 @@
                     <h3>Font Options</h3>
                     <div class="input-group" style="margin-bottom: 12px;">
                         <label for="sub-font">Font Family</label>
-                        <select id="sub-font" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; width: 100%; cursor: pointer;">
+                        <select id="sub-font"
+                            style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; width: 100%; cursor: pointer;">
                             <option value="Montserrat">Montserrat</option>
                             <option value="Roboto">Roboto</option>
                             <option value="Arial">Arial</option>
@@ -201,7 +231,8 @@
                         </select>
                     </div>
                     <div style="margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                             <label for="sub-size">Font Size</label>
                             <span id="sub-size-val">32px</span>
                         </div>
@@ -215,15 +246,19 @@
                         <div class="input-group" style="flex: 1;">
                             <label for="sub-primary-color">Primary</label>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <input type="color" id="sub-primary-color" value="#ffff00" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: none;">
-                                <input type="text" id="sub-primary-color-text" value="#ffff00" style="flex: 1; background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; text-transform: uppercase; font-family: monospace; font-size: 0.8rem; width: 75px;">
+                                <input type="color" id="sub-primary-color" value="#ffff00"
+                                    style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: none;">
+                                <input type="text" id="sub-primary-color-text" value="#ffff00"
+                                    style="flex: 1; background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; text-transform: uppercase; font-family: monospace; font-size: 0.8rem; width: 75px;">
                             </div>
                         </div>
                         <div class="input-group" style="flex: 1;">
                             <label for="sub-outline-color">Outline</label>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <input type="color" id="sub-outline-color" value="#000000" style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: none;">
-                                <input type="text" id="sub-outline-color-text" value="#000000" style="flex: 1; background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; text-transform: uppercase; font-family: monospace; font-size: 0.8rem; width: 75px;">
+                                <input type="color" id="sub-outline-color" value="#000000"
+                                    style="width: 36px; height: 36px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: none;">
+                                <input type="text" id="sub-outline-color-text" value="#000000"
+                                    style="flex: 1; background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; text-transform: uppercase; font-family: monospace; font-size: 0.8rem; width: 75px;">
                             </div>
                         </div>
                     </div>
@@ -232,14 +267,17 @@
                 <div class="panel-section">
                     <h3>Position & Alignment</h3>
                     <div style="margin-bottom: 16px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
                             <label for="sub-margin-v">Vertical Offset (MarginV)</label>
                             <span id="sub-margin-v-val">50px</span>
                         </div>
                         <input type="range" id="sub-margin-v" min="0" max="600" value="50" style="width: 100%;">
                     </div>
                     <div>
-                        <label style="font-size: 0.725rem; color: var(--text-muted); display: block; margin-bottom: 8px;">Text Alignment</label>
+                        <label
+                            style="font-size: 0.725rem; color: var(--text-muted); display: block; margin-bottom: 8px;">Text
+                            Alignment</label>
                         <div class="alignment-grid">
                             <button class="align-btn" data-align="7">↖</button>
                             <button class="align-btn" data-align="8">↑</button>
@@ -257,12 +295,16 @@
 
             <!-- Tab content: Captions -->
             <div id="tab-content-list" class="tab-content flex-grow" style="display: none;">
-                <div class="panel-section flex-grow" style="padding: 12px; border-bottom: none; display: flex; flex-direction: column; height: 100%;">
-                    <div class="captions-list-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px; flex-shrink: 0;">
+                <div class="panel-section flex-grow"
+                    style="padding: 12px; border-bottom: none; display: flex; flex-direction: column; height: 100%;">
+                    <div class="captions-list-header"
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px; flex-shrink: 0;">
                         <span id="caption-count" style="font-size: 0.75rem; color: var(--text-muted);">0 captions</span>
-                        <button id="btn-add-caption" class="btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.75rem;">+ Add Box</button>
+                        <button id="btn-add-caption" class="btn btn-secondary"
+                            style="width: auto; padding: 6px 12px; font-size: 0.75rem;">+ Add Box</button>
                     </div>
-                    <div class="subtitle-list" id="subtitles-container" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;">
+                    <div class="subtitle-list" id="subtitles-container"
+                        style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;">
                         <!-- Dynamic Subtitle list items -->
                     </div>
                 </div>
@@ -275,4 +317,5 @@
 
     <script src="/static/app.js"></script>
 </body>
+
 </html>

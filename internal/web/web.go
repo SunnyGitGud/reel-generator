@@ -35,6 +35,7 @@ type Server struct {
 	previewPath    string
 	srtPath        string
 	assPath        string
+	currentTime    float64
 	mu             sync.Mutex
 	httpServer     *http.Server
 }
@@ -154,6 +155,8 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/subtitles", s.handleGetSubtitles)
 	mux.HandleFunc("/api/subtitles/style", s.handleUpdateSubtitlesStyle)
 	mux.HandleFunc("/api/subtitles/edit", s.handleEditSubtitles)
+	mux.HandleFunc("/api/timeline", s.handleGetTimeline)
+	mux.HandleFunc("/api/timeline/thumbnail", s.handleServeTimelineThumbnail)
 	mux.HandleFunc("/api/preview.png", s.handleServePreviewImage)
 	mux.HandleFunc("/api/raw-frame.png", s.handleServeRawFrameImage)
 	mux.HandleFunc("/api/overlay-image", s.handleServeOverlayImage)
@@ -199,8 +202,8 @@ func (s *Server) generatePreviewFile() error {
 	// Resolve input indices and overlay layers dynamically
 	inputArgs, activeLayers := actions.BuildRenderingGraph(s.layers, s.inputVideo)
 
-	// Prepend -y and -ss 00:00:00 to inputArgs
-	previewArgs := []string{"-y", "-ss", "00:00:00"}
+	// Prepend -y and -ss <s.currentTime> to inputArgs
+	previewArgs := []string{"-y", "-ss", fmt.Sprintf("%.3f", s.currentTime)}
 	previewArgs = append(previewArgs, inputArgs...)
 
 	// Only burn subtitles if the ASS file actually exists on disk
@@ -352,6 +355,16 @@ func (s *Server) handleRegeneratePreview(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	timeStr := r.URL.Query().Get("time")
+	if timeStr != "" {
+		var t float64
+		if _, err := fmt.Sscanf(timeStr, "%f", &t); err == nil {
+			s.mu.Lock()
+			s.currentTime = t
+			s.mu.Unlock()
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := s.generatePreviewFile(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -469,7 +482,54 @@ func (s *Server) generateRawFrameFile() error {
 }
 
 func (s *Server) handleServeRawFrameImage(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "output/raw_frame.png")
+	timeStr := r.URL.Query().Get("time")
+	if timeStr == "" {
+		http.ServeFile(w, r, "output/raw_frame.png")
+		return
+	}
+
+	var t float64
+	if _, err := fmt.Sscanf(timeStr, "%f", &t); err != nil {
+		http.ServeFile(w, r, "output/raw_frame.png")
+		return
+	}
+
+	if t < 0 {
+		t = 0
+	}
+
+	// Generate safe filename for cache
+	safeTimeStr := strings.ReplaceAll(fmt.Sprintf("%.3f", t), ".", "_")
+	cachedFramePath := filepath.Join("output", "frames", fmt.Sprintf("frame_%s.png", safeTimeStr))
+
+	// Check if already cached
+	if _, err := os.Stat(cachedFramePath); err == nil {
+		http.ServeFile(w, r, cachedFramePath)
+		return
+	}
+
+	// Extract frame at that timestamp
+	if err := os.MkdirAll(filepath.Dir(cachedFramePath), 0755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	args := []string{
+		"-y",
+		"-ss", fmt.Sprintf("%.3f", t),
+		"-i", s.inputVideo,
+		"-vframes", "1",
+		cachedFramePath,
+	}
+
+	cmd := exec.Command("ffmpeg", args...)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("FFmpeg dynamic frame extraction failed for time %.3f: %v, output: %s", t, err, string(output))
+		http.ServeFile(w, r, "output/raw_frame.png")
+		return
+	}
+
+	http.ServeFile(w, r, cachedFramePath)
 }
 
 func (s *Server) handleServeOverlayImage(w http.ResponseWriter, r *http.Request) {
@@ -843,4 +903,99 @@ func parseHexColor(hex string) (subtitle.Color, error) {
 		return subtitle.Color{}, err
 	}
 	return subtitle.NewColor(r, g, b), nil
+}
+
+func getVideoDuration(inputPath string) (float64, error) {
+	cmd := exec.Command("ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		inputPath,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+	var duration float64
+	_, err = fmt.Sscanf(strings.TrimSpace(string(out)), "%f", &duration)
+	if err != nil {
+		return 0, err
+	}
+	return duration, nil
+}
+
+type TimelineResponse struct {
+	Duration float64 `json:"duration"`
+	Count    int     `json:"count"`
+}
+
+func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
+	duration, err := getVideoDuration(s.inputVideo)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(TimelineResponse{
+		Duration: duration,
+		Count:    12, // 12 thumbnails on the timeline
+	})
+}
+
+func (s *Server) handleServeTimelineThumbnail(w http.ResponseWriter, r *http.Request) {
+	indexStr := r.URL.Query().Get("index")
+	var idx int
+	if _, err := fmt.Sscanf(indexStr, "%d", &idx); err != nil {
+		http.Error(w, "invalid index parameter", http.StatusBadRequest)
+		return
+	}
+
+	duration, err := getVideoDuration(s.inputVideo)
+	if err != nil {
+		http.Error(w, "failed to get video duration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	count := 12
+	if idx < 0 || idx >= count {
+		http.Error(w, "index out of bounds", http.StatusBadRequest)
+		return
+	}
+
+	// Calculate target timestamp
+	t := float64(idx) * (duration / float64(count))
+
+	// Ensure thumb directory exists
+	thumbPath := filepath.Join("output", "thumbnails", fmt.Sprintf("thumb_%d.png", idx))
+	if err := os.MkdirAll(filepath.Dir(thumbPath), 0755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// If already cached, serve it
+	if _, err := os.Stat(thumbPath); err == nil {
+		http.ServeFile(w, r, thumbPath)
+		return
+	}
+
+	// Extract and resize thumbnail to width 160px using fast seek
+	args := []string{
+		"-y",
+		"-ss", fmt.Sprintf("%.3f", t),
+		"-i", s.inputVideo,
+		"-vframes", "1",
+		"-vf", "scale=160:-1",
+		thumbPath,
+	}
+
+	cmd := exec.Command("ffmpeg", args...)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("FFmpeg thumbnail extraction failed for index %d: %v, output: %s", idx, err, string(output))
+		http.Error(w, "FFmpeg failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.ServeFile(w, r, thumbPath)
 }

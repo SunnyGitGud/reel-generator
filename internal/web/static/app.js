@@ -10,7 +10,9 @@ let state = {
     dragStart: { x: 0, y: 0 },
     layerStartCoords: { x: 0, y: 0, w: 0, h: 0 },
     undoStack: [],
-    redoStack: []
+    redoStack: [],
+    currentTime: 0.0,
+    videoDuration: 0.0
 };
 
 // Subtitle State
@@ -62,6 +64,12 @@ const tabBtnStyle = document.getElementById('tab-btn-style');
 const tabBtnList = document.getElementById('tab-btn-list');
 const tabContentStyle = document.getElementById('tab-content-style');
 const tabContentList = document.getElementById('tab-content-list');
+
+// Timeline DOM Elements
+const timelineTrack = document.getElementById('timeline-track');
+const timelineThumbnails = document.getElementById('timeline-thumbnails');
+const timelinePlayhead = document.getElementById('timeline-playhead');
+const timelineInfo = document.getElementById('timeline-info');
 
 // Preview mode toggle helper
 function setPreviewMode(showPreview) {
@@ -115,6 +123,7 @@ const btnZoomFit = document.getElementById('btn-zoom-fit');
 window.addEventListener('DOMContentLoaded', () => {
     fetchLayout();
     fetchSubtitles();
+    fetchTimeline();
     setupEventListeners();
     setupSubtitleTabs();
     setupAlignmentGrid();
@@ -877,7 +886,7 @@ function setupEventListeners() {
             btnRefreshPreview.disabled = true;
             btnRefreshPreview.textContent = 'Generating...';
             
-            const response = await fetch('/api/layout/preview', {
+            const response = await fetch('/api/layout/preview?time=' + state.currentTime, {
                 method: 'POST'
             });
             const data = await response.json();
@@ -1478,5 +1487,88 @@ function setupSubtitleStyleListeners() {
             updateCanvasSubtitlePreview();
             saveSubtitleStyleDebounced();
         }
+    });
+}
+
+// Timeline logic
+async function fetchTimeline() {
+    if (!timelineTrack) return;
+    try {
+        const response = await fetch('/api/timeline');
+        const data = await response.json();
+        
+        state.videoDuration = data.duration;
+        state.currentTime = 0.0;
+        
+        updateTimelineUI();
+        
+        // Render thumbnails
+        if (timelineThumbnails) {
+            timelineThumbnails.innerHTML = '';
+            for (let i = 0; i < data.count; i++) {
+                const img = document.createElement('img');
+                img.src = `/api/timeline/thumbnail?index=${i}`;
+                img.alt = `Thumbnail ${i}`;
+                timelineThumbnails.appendChild(img);
+            }
+        }
+        
+        setupTimelineScrubbing();
+    } catch (err) {
+        console.error('Error fetching timeline data:', err);
+    }
+}
+
+function updateTimelineUI() {
+    if (!timelineInfo || !timelinePlayhead) return;
+    
+    const formatTime = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        const c = Math.floor((seconds - Math.floor(seconds)) * 100);
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${c.toString().padStart(2, '0')}`;
+    };
+    
+    timelineInfo.textContent = `${formatTime(state.currentTime)} / ${formatTime(state.videoDuration)}`;
+    
+    const pct = state.videoDuration > 0 ? (state.currentTime / state.videoDuration) * 100 : 0;
+    timelinePlayhead.style.left = `${pct}%`;
+}
+
+function setupTimelineScrubbing() {
+    if (!timelineTrack) return;
+    
+    let isScrubbing = false;
+    
+    const handleScrub = (clientX) => {
+        const rect = timelineTrack.getBoundingClientRect();
+        let pct = (clientX - rect.left) / rect.width;
+        pct = Math.max(0.0, Math.min(1.0, pct));
+        
+        state.currentTime = pct * state.videoDuration;
+        updateTimelineUI();
+        
+        // Update canvas overlay reference frames
+        document.querySelectorAll('.layer-frame img').forEach(img => {
+            if (img.src.includes('/api/raw-frame.png')) {
+                img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
+            }
+        });
+        
+        setPreviewMode(false);
+    };
+    
+    timelineTrack.addEventListener('mousedown', (e) => {
+        isScrubbing = true;
+        handleScrub(e.clientX);
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+        if (!isScrubbing) return;
+        handleScrub(e.clientX);
+    });
+    
+    window.addEventListener('mouseup', () => {
+        isScrubbing = false;
     });
 }
