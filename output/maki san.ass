@@ -1,0 +1,50 @@
+[Script Info]
+Title: Video Subtitles
+Original Script: videdit
+ScriptType: v4.00+
+Collisions: Normal
+PlayDepth: 0
+Timer: 100.0000
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,100,100,0,0,1,3.0,2.0,2,10,10,50,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Max speed Max
+Dialogue: 0,0:00:01.00,0:00:02.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}speed Max speed
+Dialogue: 0,0:00:02.00,0:00:04.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:04.00,0:00:06.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:06.00,0:00:08.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:08.00,0:00:10.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:18.00,0:00:18.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}What nigger did
+Dialogue: 0,0:00:18.85,0:00:19.71,TikTok,,0,0,0,,{%c&H00B4E7FF&}that to me
+Dialogue: 0,0:00:19.71,0:00:20.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro?
+Dialogue: 0,0:00:20.00,0:00:22.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:22.00,0:00:24.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Which fucking
+Dialogue: 0,0:00:24.00,0:00:26.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Asshole
+Dialogue: 0,0:00:26.00,0:00:26.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}I went through
+Dialogue: 0,0:00:26.75,0:00:27.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}torture for that
+Dialogue: 0,0:00:27.50,0:00:28.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}shit bro
+Dialogue: 0,0:00:30.00,0:00:32.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
+Dialogue: 0,0:00:32.00,0:00:34.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
+Dialogue: 0,0:00:34.00,0:00:35.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
+Dialogue: 0,0:00:35.00,0:00:36.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:36.00,0:00:37.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
+Dialogue: 0,0:00:37.00,0:00:38.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:38.00,0:00:39.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
+Dialogue: 0,0:00:39.00,0:00:40.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:40.00,0:00:42.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:42.00,0:00:44.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}These people
+Dialogue: 0,0:00:44.00,0:00:45.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}These fucking simps
+Dialogue: 0,0:00:45.50,0:00:46.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro
+Dialogue: 0,0:00:46.00,0:00:47.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}These simps fucking
+Dialogue: 0,0:00:47.00,0:00:48.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}guarding her bro
+Dialogue: 0,0:00:48.00,0:00:50.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Not letting her
+Dialogue: 0,0:00:50.00,0:00:52.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}People touch her
+Dialogue: 0,0:00:52.00,0:00:53.20,TikTok,,0,0,0,,{%c&H00B4E7FF&}This shit is
+Dialogue: 0,0:00:53.20,0:00:54.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}so stupid
+Dialogue: 0,0:00:56.00,0:00:58.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I can't
+Dialogue: 0,0:01:00.00,0:01:02.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I kind of

@@ -157,6 +157,7 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/project/status", s.handleProjectStatus)
 	mux.HandleFunc("/api/project/create", s.handleProjectCreate)
 	mux.HandleFunc("/api/project/render", s.handleProjectRender)
+	mux.HandleFunc("/api/project/reset", s.handleProjectReset)
 	mux.HandleFunc("/api/layout", s.handleGetLayout)
 	mux.HandleFunc("/api/layout/position", s.handleUpdatePosition)
 	mux.HandleFunc("/api/layout/size", s.handleUpdateSize)
@@ -1094,6 +1095,34 @@ func (s *Server) handleProjectStatus(w http.ResponseWriter, r *http.Request) {
 		InputVideo: inputVideo,
 		CliURL:     cliURL,
 	})
+}
+
+// handleProjectReset clears the active project in-memory so the UI can load a new video.
+func (s *Server) handleProjectReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.mu.Lock()
+	s.inputVideo = ""
+	s.srtPath = ""
+	s.assPath = ""
+	s.currentTime = 0.0
+	s.previewService = nil
+	s.layers = nil
+	s.mu.Unlock()
+
+	// Clean up temporary files from the previous session
+	os.RemoveAll("output/thumbnails")
+	os.RemoveAll("output/frames")
+	os.Remove("output/raw_frame.png")
+	os.Remove("output/preview.png")
+
+	log.Println("Project reset. Ready for a new video.")
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
 type ProjectCreateRequest struct {

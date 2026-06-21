@@ -375,6 +375,12 @@ body {
     color: var(--text-muted);
 }
 
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* Canvas Viewport */
 .canvas-viewport {
     flex-grow: 1;

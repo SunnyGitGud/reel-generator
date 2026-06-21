@@ -142,6 +142,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (selectPresetLayout) {
         selectPresetLayout.addEventListener('change', handleLoadPresetLayout);
     }
+    const btnNewVideo = document.getElementById('btn-new-video');
+    if (btnNewVideo) {
+        btnNewVideo.addEventListener('click', handleNewVideo);
+    }
 
     // Check project status on load
     try {
@@ -1568,9 +1572,10 @@ async function fetchTimeline() {
         // Render thumbnails
         if (timelineThumbnails) {
             timelineThumbnails.innerHTML = '';
+            const bust = Date.now();
             for (let i = 0; i < data.count; i++) {
                 const img = document.createElement('img');
-                img.src = `/api/timeline/thumbnail?index=${i}`;
+                img.src = `/api/timeline/thumbnail?index=${i}&t=${bust}`;
                 img.alt = `Thumbnail ${i}`;
                 timelineThumbnails.appendChild(img);
             }
@@ -1734,6 +1739,41 @@ async function handleRenderVideo() {
         statusBadge.textContent = 'Connected';
         statusBadge.classList.remove('saving');
     }
+}
+
+async function handleNewVideo() {
+    if (!confirm('Switch to a different video? The current project will be unloaded from the editor (your layout preset file is kept).')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/project/reset', { method: 'POST' });
+        const data = await response.json();
+        if (data.status !== 'success') {
+            alert('Failed to reset project: ' + (data.error || 'unknown error'));
+            return;
+        }
+    } catch (err) {
+        console.error('Error resetting project:', err);
+        alert('Failed to communicate with the server.');
+        return;
+    }
+
+    // Clear editor state
+    state.layers = [];
+    state.selectedLayerName = null;
+    state.undoStack = [];
+    state.redoStack = [];
+    state.currentTime = 0.0;
+    state.videoDuration = 0.0;
+
+    // Clear the URL input so the user can type a new one
+    const urlInput = document.getElementById('yt-url-input');
+    if (urlInput) urlInput.value = '';
+
+    // Switch views
+    document.getElementById('editor-container').style.display = 'none';
+    document.getElementById('front-page').style.display = 'flex';
 }
 
 async function fetchPresetLayouts() {
