@@ -132,7 +132,7 @@ func (r *RenderLayer) SetCrop(x, y, w, h float64) {
 	}
 }
 
-func getImageDimensions(path string) (int, int) {
+func GetImageDimensions(path string) (int, int) {
 	if path == "" {
 		return 0, 0
 	}
@@ -329,7 +329,7 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 		return !info.IsDir()
 	}
 
-	imgW, imgH := getImageDimensions(absImgPath)
+	imgW, imgH := GetImageDimensions(absImgPath)
 	overlayWidth := p.Overlay.Width
 	if overlayWidth == 0 {
 		overlayWidth = imgW

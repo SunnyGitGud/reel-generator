@@ -80,35 +80,42 @@
                 
                 <!-- Crop Settings Subpanel -->
                 <div id="crop-panel" style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
-                    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">Crop Settings</h3>
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">Crop & Scale</h3>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <div>
                             <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-x">Crop X</label>
-                                <span id="crop-x-val">0%</span>
+                                <label for="layer-scale">Scale</label>
+                                <span id="layer-scale-val">100%</span>
                             </div>
-                            <input type="range" id="crop-x" min="0" max="100" value="0" style="width: 100%;">
+                            <input type="range" id="layer-scale" min="10" max="300" value="100" style="width: 100%;">
                         </div>
                         <div>
                             <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-y">Crop Y</label>
-                                <span id="crop-y-val">0%</span>
+                                <label for="crop-left">Crop Left</label>
+                                <span id="crop-left-val">0%</span>
                             </div>
-                            <input type="range" id="crop-y" min="0" max="100" value="0" style="width: 100%;">
+                            <input type="range" id="crop-left" min="0" max="100" value="0" style="width: 100%;">
                         </div>
                         <div>
                             <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-w">Crop Width</label>
-                                <span id="crop-w-val">100%</span>
+                                <label for="crop-right">Crop Right</label>
+                                <span id="crop-right-val">0%</span>
                             </div>
-                            <input type="range" id="crop-w" min="0" max="100" value="100" style="width: 100%;">
+                            <input type="range" id="crop-right" min="0" max="100" value="0" style="width: 100%;">
                         </div>
                         <div>
                             <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-h">Crop Height</label>
-                                <span id="crop-h-val">100%</span>
+                                <label for="crop-top">Crop Top</label>
+                                <span id="crop-top-val">0%</span>
                             </div>
-                            <input type="range" id="crop-h" min="0" max="100" value="100" style="width: 100%;">
+                            <input type="range" id="crop-top" min="0" max="100" value="0" style="width: 100%;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                <label for="crop-bottom">Crop Bottom</label>
+                                <span id="crop-bottom-val">0%</span>
+                            </div>
+                            <input type="range" id="crop-bottom" min="0" max="100" value="0" style="width: 100%;">
                         </div>
                     </div>
                 </div>
@@ -123,6 +130,10 @@
                 <button id="btn-save-layout" class="btn btn-primary">
                     <span class="btn-icon">💾</span>
                     Save Layout
+                </button>
+                <button id="btn-export-layout" class="btn btn-secondary" style="border-color: var(--border-color);">
+                    <span class="btn-icon">📤</span>
+                    Export Layout
                 </button>
             </div>
         </aside>

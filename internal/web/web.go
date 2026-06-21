@@ -11,9 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/yourname/video-editor/internal/actions"
+	"github.com/yourname/video-editor/internal/ffmpeg"
 	"github.com/yourname/video-editor/internal/preset"
 	"github.com/yourname/video-editor/internal/preview"
 )
@@ -47,6 +49,8 @@ type LayerResponse struct {
 	CropYPercent      float64 `json:"crop_y_percent"`
 	CropWidthPercent  float64 `json:"crop_width_percent"`
 	CropHeightPercent float64 `json:"crop_height_percent"`
+	InputWidth        int     `json:"input_width"`
+	InputHeight       int     `json:"input_height"`
 }
 
 type LayoutResponse struct {
@@ -72,6 +76,10 @@ type SizeRequest struct {
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
 	ScaleMode string `json:"scale_mode"`
+}
+
+type ExportRequest struct {
+	Name string `json:"name"`
 }
 
 func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int, previewPath string) (*Server, error) {
@@ -137,6 +145,7 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/layout/size", s.handleUpdateSize)
 	mux.HandleFunc("/api/layout/preview", s.handleRegeneratePreview)
 	mux.HandleFunc("/api/layout/save", s.handleSaveLayout)
+	mux.HandleFunc("/api/layout/export", s.handleExportLayout)
 	mux.HandleFunc("/api/preview.png", s.handleServePreviewImage)
 	mux.HandleFunc("/api/raw-frame.png", s.handleServeRawFrameImage)
 	mux.HandleFunc("/api/overlay-image", s.handleServeOverlayImage)
@@ -201,6 +210,27 @@ func (s *Server) handleGetLayout(w http.ResponseWriter, r *http.Request) {
 	var layersInfo []LayerResponse
 	for _, l := range s.layers {
 		cropX, cropY, cropW, cropH := l.GetCrop()
+		
+		inputW, inputH := 0, 0
+		for _, f := range l.Filters {
+			if cf, ok := f.(ffmpeg.CropPercent); ok {
+				inputW = cf.InputWidth
+				inputH = cf.InputHeight
+				break
+			}
+		}
+		if inputW == 0 || inputH == 0 {
+			if l.ImagePath != "" {
+				inputW, inputH = actions.GetImageDimensions(l.ImagePath)
+			}
+		}
+		if inputW == 0 {
+			inputW = 1920
+		}
+		if inputH == 0 {
+			inputH = 1080
+		}
+
 		layersInfo = append(layersInfo, LayerResponse{
 			Name:              l.Name,
 			X:                 l.X,
@@ -214,6 +244,8 @@ func (s *Server) handleGetLayout(w http.ResponseWriter, r *http.Request) {
 			CropYPercent:      cropY,
 			CropWidthPercent:  cropW,
 			CropHeightPercent: cropH,
+			InputWidth:        inputW,
+			InputHeight:       inputH,
 		})
 	}
 
@@ -434,4 +466,104 @@ func (s *Server) handleServeOverlayImage(w http.ResponseWriter, r *http.Request)
 	} else {
 		http.Error(w, "No overlay image configured", http.StatusNotFound)
 	}
+}
+
+func (s *Server) handleExportLayout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ExportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		http.Error(w, "Name cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// Clean name to prevent directory traversal
+	name = filepath.Base(name)
+	if !strings.HasSuffix(strings.ToLower(name), ".json") {
+		name += ".json"
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Ensure layouts directory exists
+	layoutsDir := "layouts"
+	if err := os.MkdirAll(layoutsDir, 0755); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	destPath := filepath.Join(layoutsDir, name)
+
+	// Sync preset from layers in-memory state before exporting
+	for _, l := range s.layers {
+		visibleVal := l.Visible
+		var visiblePtr *bool = &visibleVal
+		cropX, cropY, cropW, cropH := l.GetCrop()
+
+		switch l.Name {
+		case "game":
+			s.preset.Gameplay.X = l.X
+			s.preset.Gameplay.Y = l.Y
+			s.preset.Gameplay.Width = l.GetWidth()
+			s.preset.Gameplay.Height = l.GetHeight()
+			s.preset.Gameplay.Visible = visiblePtr
+			s.preset.Gameplay.ZIndex = l.ZIndex
+			s.preset.Gameplay.CropXPercent = cropX
+			s.preset.Gameplay.CropYPercent = cropY
+			s.preset.Gameplay.CropWidthPercent = cropW
+			s.preset.Gameplay.CropHeightPercent = cropH
+			s.preset.Gameplay.ScaleMode = l.GetScaleMode()
+		case "cam":
+			s.preset.Facecam.X = l.X
+			s.preset.Facecam.Y = l.Y
+			s.preset.Facecam.Width = l.GetWidth()
+			s.preset.Facecam.Height = l.GetHeight()
+			s.preset.Facecam.Visible = visiblePtr
+			s.preset.Facecam.ZIndex = l.ZIndex
+			s.preset.Facecam.CropXPercent = cropX
+			s.preset.Facecam.CropYPercent = cropY
+			s.preset.Facecam.CropWidthPercent = cropW
+			s.preset.Facecam.CropHeightPercent = cropH
+			s.preset.Facecam.ScaleMode = l.GetScaleMode()
+		case "overlay":
+			s.preset.Overlay.X = l.X
+			s.preset.Overlay.Y = l.Y
+			s.preset.Overlay.Width = l.GetWidth()
+			s.preset.Overlay.Height = l.GetHeight()
+			s.preset.Overlay.Visible = visiblePtr
+			s.preset.Overlay.ZIndex = l.ZIndex
+			s.preset.Overlay.CropXPercent = cropX
+			s.preset.Overlay.CropYPercent = cropY
+			s.preset.Overlay.CropWidthPercent = cropW
+			s.preset.Overlay.CropHeightPercent = cropH
+			s.preset.Overlay.ScaleMode = l.GetScaleMode()
+		}
+	}
+
+	data, err := json.MarshalIndent(s.preset, "", "  ")
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	if err := os.WriteFile(destPath, data, 0644); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }

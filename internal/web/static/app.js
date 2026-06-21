@@ -56,18 +56,21 @@ const inputH = document.getElementById('dim-h');
 const inputZ = document.getElementById('layer-zindex');
 const inputScaleMode = document.getElementById('layer-scalemode');
 const inputLockAR = document.getElementById('layer-lock-ar');
-const cropX = document.getElementById('crop-x');
-const cropY = document.getElementById('crop-y');
-const cropW = document.getElementById('crop-w');
-const cropH = document.getElementById('crop-h');
-const cropXVal = document.getElementById('crop-x-val');
-const cropYVal = document.getElementById('crop-y-val');
-const cropWVal = document.getElementById('crop-w-val');
-const cropHVal = document.getElementById('crop-h-val');
+const scaleInput = document.getElementById('layer-scale');
+const scaleVal = document.getElementById('layer-scale-val');
+const cropLeft = document.getElementById('crop-left');
+const cropLeftVal = document.getElementById('crop-left-val');
+const cropRight = document.getElementById('crop-right');
+const cropRightVal = document.getElementById('crop-right-val');
+const cropTop = document.getElementById('crop-top');
+const cropTopVal = document.getElementById('crop-top-val');
+const cropBottom = document.getElementById('crop-bottom');
+const cropBottomVal = document.getElementById('crop-bottom-val');
 
 // Buttons
 const btnRefreshPreview = document.getElementById('btn-refresh-preview');
 const btnSaveLayout = document.getElementById('btn-save-layout');
+const btnExportLayout = document.getElementById('btn-export-layout');
 const btnZoomIn = document.getElementById('btn-zoom-in');
 const btnZoomOut = document.getElementById('btn-zoom-out');
 const btnZoomFit = document.getElementById('btn-zoom-fit');
@@ -89,6 +92,30 @@ async function fetchLayout() {
         state.layers = data.layers.map(layer => {
             // Default lock_ar to true for gameplay ('game') and facecam ('cam') layers
             layer.lock_ar = (layer.name === 'game' || layer.name === 'cam');
+            
+            // Calculate Left, Right, Top, Bottom crop percents from X, Y, Width, Height crop percents
+            const left = layer.crop_x_percent || 0.0;
+            const top = layer.crop_y_percent || 0.0;
+            const right = Math.max(0.0, 1.0 - left - (layer.crop_width_percent || 1.0));
+            const bottom = Math.max(0.0, 1.0 - top - (layer.crop_height_percent || 1.0));
+            
+            layer.crop_left = left;
+            layer.crop_right = right;
+            layer.crop_top = top;
+            layer.crop_bottom = bottom;
+            
+            // Get original input dimensions from API
+            layer.input_width = layer.input_width || 1920;
+            layer.input_height = layer.input_height || 1080;
+            
+            // Calculate scale factor: display width / (input_width * crop_width_percent)
+            const cwPct = 1.0 - left - right;
+            if (cwPct > 0.001) {
+                layer.scale = layer.width / (layer.input_width * cwPct);
+            } else {
+                layer.scale = 1.0;
+            }
+            
             return layer;
         });
         
@@ -217,15 +244,18 @@ function selectLayer(name) {
         inputScaleMode.value = layer.scale_mode || 'stretch';
         inputLockAR.checked = !!layer.lock_ar;
         
-        cropX.value = Math.round((layer.crop_x_percent || 0) * 100);
-        cropY.value = Math.round((layer.crop_y_percent || 0) * 100);
-        cropW.value = Math.round((layer.crop_width_percent || 1) * 100);
-        cropH.value = Math.round((layer.crop_height_percent || 1) * 100);
+        scaleInput.value = Math.round((layer.scale || 1.0) * 100);
+        scaleVal.textContent = `${scaleInput.value}%`;
         
-        cropXVal.textContent = `${cropX.value}%`;
-        cropYVal.textContent = `${cropY.value}%`;
-        cropWVal.textContent = `${cropW.value}%`;
-        cropHVal.textContent = `${cropH.value}%`;
+        cropLeft.value = Math.round((layer.crop_left || 0.0) * 100);
+        cropRight.value = Math.round((layer.crop_right || 0.0) * 100);
+        cropTop.value = Math.round((layer.crop_top || 0.0) * 100);
+        cropBottom.value = Math.round((layer.crop_bottom || 0.0) * 100);
+        
+        cropLeftVal.textContent = `${cropLeft.value}%`;
+        cropRightVal.textContent = `${cropRight.value}%`;
+        cropTopVal.textContent = `${cropTop.value}%`;
+        cropBottomVal.textContent = `${cropBottom.value}%`;
         
         transformPanel.style.display = 'block';
     } else {
@@ -559,6 +589,17 @@ function setupEventListeners() {
             }
         }
         
+        if (state.isResizing) {
+            const cwPct = 1.0 - (layer.crop_left || 0.0) - (layer.crop_right || 0.0);
+            if (cwPct > 0.001) {
+                layer.scale = layer.width / (layer.input_width * cwPct);
+            } else {
+                layer.scale = 1.0;
+            }
+            scaleInput.value = Math.round(layer.scale * 100);
+            scaleVal.textContent = `${scaleInput.value}%`;
+        }
+        
         // Update DOM visuals instantly
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
         if (frame) {
@@ -626,6 +667,16 @@ function setupEventListeners() {
         layer.z_index = parseInt(inputZ.value) || 0;
         layer.scale_mode = inputScaleMode.value;
         
+        // Update scale factor from new width
+        const cwPct = 1.0 - (layer.crop_left || 0.0) - (layer.crop_right || 0.0);
+        if (cwPct > 0.001) {
+            layer.scale = layer.width / (layer.input_width * cwPct);
+        } else {
+            layer.scale = 1.0;
+        }
+        scaleInput.value = Math.round(layer.scale * 100);
+        scaleVal.textContent = `${scaleInput.value}%`;
+        
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
         if (frame) {
             updateFramePosition(frame, layer);
@@ -648,49 +699,67 @@ function setupEventListeners() {
         }
     });
     
-    // Crop sliders updates
+    // Crop & Scale sliders updates
     const triggerCropUpdate = (e) => {
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
         
-        let cx = parseFloat(cropX.value) || 0;
-        let cy = parseFloat(cropY.value) || 0;
-        let cw = parseFloat(cropW.value) || 100;
-        let ch = parseFloat(cropH.value) || 100;
+        let left = parseFloat(cropLeft.value) || 0;
+        let right = parseFloat(cropRight.value) || 0;
+        let top = parseFloat(cropTop.value) || 0;
+        let bottom = parseFloat(cropBottom.value) || 0;
+        let scale = parseFloat(scaleInput.value) || 100;
         
         const target = e ? e.target : null;
         
-        if (target === cropX) {
-            if (cx + cw > 100) {
-                cx = 100 - cw;
-                cropX.value = cx;
+        // Enforce boundary constraints: Left + Right <= 99% and Top + Bottom <= 99%
+        if (target === cropLeft) {
+            if (left + right > 99) {
+                left = 99 - right;
+                cropLeft.value = left;
             }
-        } else if (target === cropY) {
-            if (cy + ch > 100) {
-                cy = 100 - ch;
-                cropY.value = cy;
+        } else if (target === cropRight) {
+            if (left + right > 99) {
+                right = 99 - left;
+                cropRight.value = right;
             }
-        } else if (target === cropW) {
-            if (cx + cw > 100) {
-                cw = 100 - cx;
-                cropW.value = cw;
+        } else if (target === cropTop) {
+            if (top + bottom > 99) {
+                top = 99 - bottom;
+                cropTop.value = top;
             }
-        } else if (target === cropH) {
-            if (cy + ch > 100) {
-                ch = 100 - cy;
-                cropH.value = ch;
+        } else if (target === cropBottom) {
+            if (top + bottom > 99) {
+                bottom = 99 - top;
+                cropBottom.value = bottom;
             }
         }
         
-        layer.crop_x_percent = cx / 100;
-        layer.crop_y_percent = cy / 100;
-        layer.crop_width_percent = cw / 100;
-        layer.crop_height_percent = ch / 100;
+        layer.crop_left = left / 100;
+        layer.crop_right = right / 100;
+        layer.crop_top = top / 100;
+        layer.crop_bottom = bottom / 100;
+        layer.scale = scale / 100;
         
-        cropXVal.textContent = `${cx}%`;
-        cropYVal.textContent = `${cy}%`;
-        cropWVal.textContent = `${cw}%`;
-        cropHVal.textContent = `${ch}%`;
+        // Convert Left/Right/Top/Bottom to original X/Y/Width/Height crop percentages for backend compatibility
+        layer.crop_x_percent = layer.crop_left;
+        layer.crop_y_percent = layer.crop_top;
+        layer.crop_width_percent = Math.max(0.01, 1.0 - layer.crop_left - layer.crop_right);
+        layer.crop_height_percent = Math.max(0.01, 1.0 - layer.crop_top - layer.crop_bottom);
+        
+        // Automatically adjust the layer's displayed size based on scale and crop
+        layer.width = Math.round(layer.input_width * layer.crop_width_percent * layer.scale);
+        layer.height = Math.round(layer.input_height * layer.crop_height_percent * layer.scale);
+        
+        cropLeftVal.textContent = `${left}%`;
+        cropRightVal.textContent = `${right}%`;
+        cropTopVal.textContent = `${top}%`;
+        cropBottomVal.textContent = `${bottom}%`;
+        scaleVal.textContent = `${scale}%`;
+        
+        // Update Width/Height inputs in transform panel
+        inputW.value = layer.width;
+        inputH.value = layer.height;
         
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
         if (frame) {
@@ -699,10 +768,11 @@ function setupEventListeners() {
         
         renderLayerList();
         saveLayerPosition(layer);
+        saveLayerSize(layer);
         setPreviewMode(false); // Switch to real-time interactive mode
     };
     
-    [cropX, cropY, cropW, cropH].forEach(input => {
+    [cropLeft, cropRight, cropTop, cropBottom, scaleInput].forEach(input => {
         input.addEventListener('input', triggerCropUpdate);
     });
     
@@ -808,6 +878,37 @@ function setupEventListeners() {
         }
     });
     
+    btnExportLayout.addEventListener('click', async () => {
+        const name = prompt("Enter layout name to export (e.g. splitscreen):");
+        if (!name) return;
+        
+        try {
+            btnExportLayout.disabled = true;
+            statusBadge.textContent = 'Exporting...';
+            statusBadge.classList.add('saving');
+            
+            const response = await fetch('/api/layout/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                showToast(`Layout exported as ${name}.json!`);
+            } else {
+                alert('Failed to export layout: ' + data.error);
+            }
+        } catch (err) {
+            console.error('Error exporting layout:', err);
+            alert('Failed to export. Server error.');
+        } finally {
+            btnExportLayout.disabled = false;
+            statusBadge.textContent = 'Connected';
+            statusBadge.classList.remove('saving');
+        }
+    });
+    
     // Zoom control click listeners
     btnZoomIn.addEventListener('click', () => {
         state.zoom = Math.min(2.0, state.zoom + 0.05);
@@ -830,7 +931,7 @@ function setupEventListeners() {
     }
     
     // Slider interaction mousedown/keydown history pushes
-    [cropX, cropY, cropW, cropH].forEach(input => {
+    [cropLeft, cropRight, cropTop, cropBottom, scaleInput].forEach(input => {
         input.addEventListener('focus', pushStateToHistory);
         input.addEventListener('mousedown', pushStateToHistory);
         input.addEventListener('touchstart', pushStateToHistory);

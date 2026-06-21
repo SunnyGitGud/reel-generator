@@ -27,6 +27,8 @@ func main() {
 	// Define command line flags
 	videosDirFlag := flag.String("dir", "videos", "Directory containing input videos")
 	urlFlag := flag.String("url", "", "YouTube URL to download and process")
+	layoutsFlag := flag.Bool("layouts", false, "Choose from exported layouts and bypass Web UI")
+	layoutEditFlag := flag.Bool("layoutedit", false, "Bypass layout edit prompt and edit in Web UI")
 	flag.Parse()
 
 	videosDir := *videosDirFlag
@@ -39,6 +41,18 @@ func main() {
 				youtubeURL = arg
 				break
 			}
+		}
+	}
+
+	useLayoutsFlag := *layoutsFlag
+	useLayoutEditFlag := *layoutEditFlag
+
+	for _, arg := range flag.Args() {
+		if arg == "-layouts" || arg == "--layouts" {
+			useLayoutsFlag = true
+		}
+		if arg == "-layoutedit" || arg == "--layoutedit" {
+			useLayoutEditFlag = true
 		}
 	}
 
@@ -316,11 +330,75 @@ func main() {
 
 		// --- Visual Layout Editing Option ---
 		presetPath := "presets/shorts.json"
-		fmt.Print("Do you want to edit the layout visually in the browser? (y/n): ")
-		var editResponse string
-		fmt.Scanln(&editResponse)
-		editResponse = strings.TrimSpace(strings.ToLower(editResponse))
-		if editResponse == "y" || editResponse == "yes" {
+		bypassWebUI := false
+
+		if useLayoutsFlag {
+			layoutsDir := "layouts"
+			files, err := os.ReadDir(layoutsDir)
+			if err != nil || len(files) == 0 {
+				log.Printf("No layouts found in %s/ directory. Proceeding with default.\n", layoutsDir)
+			} else {
+				var jsonFiles []string
+				for _, f := range files {
+					if !f.IsDir() && strings.HasSuffix(strings.ToLower(f.Name()), ".json") {
+						jsonFiles = append(jsonFiles, f.Name())
+					}
+				}
+
+				if len(jsonFiles) == 0 {
+					log.Printf("No .json layouts found in %s/ directory. Proceeding with default.\n", layoutsDir)
+				} else {
+					var selectedFile string
+					if len(jsonFiles) == 1 {
+						selectedFile = jsonFiles[0]
+						log.Printf("Found 1 layout: %s. Using it.\n", selectedFile)
+					} else {
+						fmt.Println("\nAvailable layouts:")
+						for idx, name := range jsonFiles {
+							fmt.Printf("  %d. %s\n", idx+1, name)
+						}
+						fmt.Print("Select a layout (1-", len(jsonFiles), "): ")
+						var choice int
+						_, scanErr := fmt.Scanln(&choice)
+						if scanErr != nil || choice < 1 || choice > len(jsonFiles) {
+							log.Println("Invalid choice. Using default layout.")
+						} else {
+							selectedFile = jsonFiles[choice-1]
+						}
+					}
+
+					if selectedFile != "" {
+						srcPath := filepath.Join(layoutsDir, selectedFile)
+						layoutData, err := os.ReadFile(srcPath)
+						if err != nil {
+							log.Printf("Failed to read layout file %s: %v\n", srcPath, err)
+						} else {
+							if err := os.WriteFile(presetPath, layoutData, 0644); err != nil {
+								log.Printf("Failed to update preset file %s: %v\n", presetPath, err)
+							} else {
+								log.Printf("✓ Applied layout: %s\n", selectedFile)
+								bypassWebUI = true
+							}
+						}
+					}
+				}
+			}
+		}
+
+		startEditor := false
+		if !bypassWebUI {
+			if useLayoutEditFlag {
+				startEditor = true
+			} else {
+				fmt.Print("Do you want to edit the layout visually in the browser? (y/n): ")
+				var editResponse string
+				fmt.Scanln(&editResponse)
+				editResponse = strings.TrimSpace(strings.ToLower(editResponse))
+				startEditor = (editResponse == "y" || editResponse == "yes")
+			}
+		}
+
+		if startEditor {
 			srv, err := web.NewServer(presetPath, videoInputPath, inputWidth, inputHeight, "output/preview.png")
 			if err != nil {
 				log.Fatalf("Failed to initialize Layout Editor server: %v", err)
