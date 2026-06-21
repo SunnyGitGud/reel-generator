@@ -40,65 +40,144 @@ func main() {
 		}
 	}
 
+	alreadyDownloaded := false
+	alreadyProcessed := false
+	var downloadedFile string
+	if youtubeURL != "" {
+		downloadedFile = getYTFilename(youtubeURL, `C:\Users\s\downloads\cookies.txt`)
+		if downloadedFile != "" && fileExists(downloadedFile) {
+			alreadyDownloaded = true
+			baseName := filepath.Base(downloadedFile)
+			finalOutputPath := filepath.Join("output", baseName)
+			alreadyProcessed = fileExists(finalOutputPath)
+		}
+	}
+
 	// Prompt the user to opt out of rendering subtitles at the start of the script
-	fmt.Print("Do you want to render subtitles? (y/n): ")
-	var response string
-	fmt.Scanln(&response)
-	response = strings.TrimSpace(strings.ToLower(response))
-	skipSubtitles := response == "n" || response == "no"
+	skipSubtitles := false
+	if alreadyDownloaded && alreadyProcessed {
+		fmt.Print("Video is already downloaded and processed. Do you want to process without adding subtitles? (y/n): ")
+		var response string
+		fmt.Scanln(&response)
+		response = strings.TrimSpace(strings.ToLower(response))
+		skipSubtitles = response == "y" || response == "yes"
+	} else {
+		fmt.Print("Do you want to render subtitles? (y/n): ")
+		var response string
+		fmt.Scanln(&response)
+		response = strings.TrimSpace(strings.ToLower(response))
+		skipSubtitles = response == "n" || response == "no"
+	}
 
 	var videoFiles []string
 
 	if youtubeURL != "" {
-		log.Printf("Downloading video from URL: %s\n", youtubeURL)
+		if alreadyDownloaded {
+			videoFiles = []string{downloadedFile}
+			log.Printf("Video is already downloaded: %s. Skipping download.\n", downloadedFile)
+		} else {
+			log.Printf("Downloading video from URL: %s\n", youtubeURL)
 
-		if err := os.MkdirAll("videos", 0755); err != nil {
-			log.Fatalf("Failed to create videos directory: %v", err)
-		}
+			if err := os.MkdirAll("videos", 0755); err != nil {
+				log.Fatalf("Failed to create videos directory: %v", err)
+			}
 
-		// Get the filename that yt-dlp will produce
-		cmdName := exec.Command("yt-dlp",
-			"--cookies", `C:\Users\s\downloads\cookies.txt`,
-			"--js-runtimes", "node",
-			"-f", "299+140",
-			"--merge-output-format", "mp4",
-			"-o", "videos/%(title)s.%(ext)s",
-			"--get-filename",
-			youtubeURL,
-		)
-		nameOut, err := cmdName.Output()
-		var downloadedFile string
-		if err == nil {
-			downloadedFile = strings.TrimSpace(string(nameOut))
-		}
+			var downloadSuccess bool
+			cookiesPath := `C:\Users\s\downloads\cookies.txt`
 
-		// Run the actual download command
-		cmd := exec.Command("yt-dlp",
-			"--cookies", `C:\Users\s\downloads\cookies.txt`,
-			"--js-runtimes", "node",
-			"-f", "299+140",
-			"--merge-output-format", "mp4",
-			"-o", "videos/%(title)s.%(ext)s",
-			youtubeURL,
-		)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
-		if err := cmd.Run(); err != nil {
-			log.Fatalf("Failed to download video: %v", err)
-		}
+			// Attempt 1: Static cookies file if it exists
+			if fileExists(cookiesPath) {
+				cmd := exec.Command("yt-dlp",
+					"--cookies", cookiesPath,
+					"--js-runtimes", "node",
+					"-f", "299+140",
+					"--merge-output-format", "mp4",
+					"-o", "videos/%(title)s.%(ext)s",
+					youtubeURL,
+				)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+				if err := cmd.Run(); err == nil {
+					downloadSuccess = true
+				} else {
+					log.Printf("Download with static cookies failed: %v\n", err)
+				}
+			} else {
+				log.Printf("Static cookies file not found at %s. Skipping to browser cookies...\n", cookiesPath)
+			}
 
-		// If we couldn't get the filename before, or if it doesn't exist, let's find the newest video in videos/
-		if downloadedFile == "" || !fileExists(downloadedFile) {
+			// Attempt 2: Fallback to chrome cookies
+			if !downloadSuccess {
+				cmd := exec.Command("yt-dlp",
+					"--cookies-from-browser", "chrome",
+					"--js-runtimes", "node",
+					"-f", "299+140",
+					"--merge-output-format", "mp4",
+					"-o", "videos/%(title)s.%(ext)s",
+					youtubeURL,
+				)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+				if err := cmd.Run(); err == nil {
+					downloadSuccess = true
+				} else {
+					log.Printf("Download with chrome cookies failed: %v\n", err)
+				}
+			}
+
+			// Attempt 3: Fallback to edge cookies
+			if !downloadSuccess {
+				cmd := exec.Command("yt-dlp",
+					"--cookies-from-browser", "edge",
+					"--js-runtimes", "node",
+					"-f", "299+140",
+					"--merge-output-format", "mp4",
+					"-o", "videos/%(title)s.%(ext)s",
+					youtubeURL,
+				)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+				if err := cmd.Run(); err == nil {
+					downloadSuccess = true
+				} else {
+					log.Printf("Download with edge cookies failed: %v\n", err)
+				}
+			}
+
+			// Attempt 4: Fallback to no cookies
+			if !downloadSuccess {
+				cmd := exec.Command("yt-dlp",
+					"--js-runtimes", "node",
+					"-f", "299+140",
+					"--merge-output-format", "mp4",
+					"-o", "videos/%(title)s.%(ext)s",
+					youtubeURL,
+				)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+				if err := cmd.Run(); err == nil {
+					downloadSuccess = true
+				} else {
+					log.Printf("\n[Error] Failed to download video using yt-dlp.")
+					log.Printf("If this is an age-restricted video, please make sure you have exported a valid cookies file from your logged-in browser to %s.", cookiesPath)
+					log.Printf("You can export cookies using browser extensions like 'Get cookies.txt LOCALLY' or 'cookie.txt'.\n")
+					log.Fatalf("All download attempts failed. Last error: %v", err)
+				}
+			}
+
+			// Find the downloaded video
 			downloadedFile = findNewestVideo("videos")
-		}
+			if downloadedFile == "" {
+				log.Fatalf("Could not find downloaded video file in videos directory")
+			}
 
-		if downloadedFile == "" {
-			log.Fatalf("Could not find downloaded video file in videos directory")
+			videoFiles = []string{downloadedFile}
+			log.Printf("Downloaded video to: %s\n", downloadedFile)
 		}
-
-		videoFiles = []string{downloadedFile}
-		log.Printf("Downloaded video to: %s\n", downloadedFile)
 	} else {
 		// Read files in the directory
 		files, err := os.ReadDir(videosDir)
@@ -291,4 +370,61 @@ func findNewestVideo(dir string) string {
 		}
 	}
 	return newestFile
+}
+
+func getYTFilename(youtubeURL string, cookiesPath string) string {
+	// Attempt with static cookies
+	if fileExists(cookiesPath) {
+		cmd := exec.Command("yt-dlp",
+			"--cookies", cookiesPath,
+			"--js-runtimes", "node",
+			"-f", "299+140",
+			"--merge-output-format", "mp4",
+			"-o", "videos/%(title)s.%(ext)s",
+			"--get-filename",
+			youtubeURL,
+		)
+		if out, err := cmd.Output(); err == nil {
+			return strings.TrimSpace(string(out))
+		}
+	}
+	// Fallback to chrome cookies
+	cmdChrome := exec.Command("yt-dlp",
+		"--cookies-from-browser", "chrome",
+		"--js-runtimes", "node",
+		"-f", "299+140",
+		"--merge-output-format", "mp4",
+		"-o", "videos/%(title)s.%(ext)s",
+		"--get-filename",
+		youtubeURL,
+	)
+	if out, err := cmdChrome.Output(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	// Fallback to edge cookies
+	cmdEdge := exec.Command("yt-dlp",
+		"--cookies-from-browser", "edge",
+		"--js-runtimes", "node",
+		"-f", "299+140",
+		"--merge-output-format", "mp4",
+		"-o", "videos/%(title)s.%(ext)s",
+		"--get-filename",
+		youtubeURL,
+	)
+	if out, err := cmdEdge.Output(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	// Fallback to no cookies
+	cmdNoCookies := exec.Command("yt-dlp",
+		"--js-runtimes", "node",
+		"-f", "299+140",
+		"--merge-output-format", "mp4",
+		"-o", "videos/%(title)s.%(ext)s",
+		"--get-filename",
+		youtubeURL,
+	)
+	if out, err := cmdNoCookies.Output(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	return ""
 }
