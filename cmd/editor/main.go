@@ -239,10 +239,10 @@ func main() {
 
 		var err error
 		var assFileToUse string
+		transcriptSRTPath := filepath.Join("output", inputBaseNoExt+".srt")
+		assFilePath := filepath.Join("output", inputBaseNoExt+".ass")
 
 		if !skipSubtitles {
-			transcriptSRTPath := filepath.Join("output", inputBaseNoExt+".srt")
-			assFilePath := filepath.Join("output", inputBaseNoExt+".ass")
 
 			useManualSubs := false
 			useSRT := false
@@ -399,7 +399,7 @@ func main() {
 		}
 
 		if startEditor {
-			srv, err := web.NewServer(presetPath, videoInputPath, inputWidth, inputHeight, "output/preview.png")
+			srv, err := web.NewServer(presetPath, videoInputPath, inputWidth, inputHeight, "output/preview.png", transcriptSRTPath, assFilePath)
 			if err != nil {
 				log.Fatalf("Failed to initialize Layout Editor server: %v", err)
 			}
@@ -422,6 +422,11 @@ func main() {
 			fmt.Scanln(&enterResp)
 
 			srv.Stop()
+		}
+
+		// Update subtitle ASS path if it was generated during editing session
+		if fileExists(assFilePath) {
+			assFileToUse = assFilePath
 		}
 
 		// Load/Reload the layout configurations from preset to be sure we have the latest

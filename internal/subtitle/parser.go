@@ -118,3 +118,23 @@ func parseIntOrZero(s string) int {
 	fmt.Sscanf(s, "%d", &result)
 	return result
 }
+
+// SaveSRT saves the subtitle track back to an SRT file
+func (st *SubtitleTrack) SaveSRT(path string) error {
+	var sb strings.Builder
+	for i, item := range st.Items {
+		sb.WriteString(fmt.Sprintf("%d\n", i+1))
+		sb.WriteString(fmt.Sprintf("%s --> %s\n", formatSRTTimestamp(item.Start), formatSRTTimestamp(item.End)))
+		sb.WriteString(fmt.Sprintf("%s\n\n", item.Text))
+	}
+	return os.WriteFile(path, []byte(sb.String()), 0644)
+}
+
+func formatSRTTimestamp(seconds float64) string {
+	hours := int(seconds) / 3600
+	minutes := (int(seconds) % 3600) / 60
+	secs := int(seconds) % 60
+	millis := int((seconds - float64(int(seconds))) * 1000)
+
+	return fmt.Sprintf("%02d:%02d:%02d,%03d", hours, minutes, secs, millis)
+}

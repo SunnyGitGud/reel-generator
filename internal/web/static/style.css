@@ -562,3 +562,208 @@ body {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Subtitles Sidebar customization */
+.subtitles-sidebar {
+    border-left: 1px solid var(--border-color);
+    border-right: none;
+}
+
+/* Tabs System */
+.tabs-header {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background-color: rgba(0, 0, 0, 0.12);
+    padding: 0 10px;
+    flex-shrink: 0;
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 12px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.tab-btn:hover {
+    color: var(--text-main);
+}
+
+.tab-btn.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+/* 3x3 Alignment Grid */
+.alignment-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 140px;
+    margin: 0 auto;
+}
+
+.align-btn {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.align-btn:hover {
+    border-color: var(--text-muted);
+    color: var(--text-main);
+}
+
+.align-btn.active {
+    background-color: rgba(59, 130, 246, 0.15);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    font-weight: bold;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.25);
+}
+
+/* Subtitle Card Item */
+.subtitle-card {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.subtitle-card:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.subtitle-card.active {
+    border-color: var(--color-accent);
+    background-color: rgba(59, 130, 246, 0.04);
+}
+
+.subtitle-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.subtitle-index {
+    font-size: 0.725rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.subtitle-time-inputs {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.subtitle-time-inputs input {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 4px 6px;
+    border-radius: 4px;
+    width: 60px;
+    font-size: 0.75rem;
+    font-family: monospace;
+    outline: none;
+    text-align: center;
+}
+
+.subtitle-time-inputs input:focus {
+    border-color: var(--color-accent);
+}
+
+.subtitle-time-separator {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.subtitle-card-body {
+    display: flex;
+    gap: 8px;
+}
+
+.subtitle-text-area {
+    flex-grow: 1;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    resize: none;
+    height: 48px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.subtitle-text-area:focus {
+    border-color: var(--color-accent);
+}
+
+.btn-delete-subtitle {
+    background: none;
+    border: none;
+    color: var(--color-danger);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete-subtitle:hover {
+    opacity: 1;
+}
+
+/* Canvas Subtitle preview style overlay */
+.canvas-subtitle {
+    position: absolute;
+    z-index: 50; /* Above overlays but below outline borders of layers */
+    pointer-events: none;
+    text-align: center;
+    white-space: pre-wrap;
+    line-height: 1.25;
+    padding: 4px 8px;
+    box-sizing: border-box;
+    width: 90%;
+    /* Default styling fallbacks */
+    font-family: 'Montserrat', sans-serif;
+    font-weight: bold;
+}

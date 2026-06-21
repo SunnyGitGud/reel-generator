@@ -16,10 +16,10 @@
     "crop_height_percent": 1
   },
   "facecam": {
-    "x": 127,
-    "y": 47,
-    "width": 351,
-    "height": 248,
+    "x": 197,
+    "y": 92,
+    "width": 704,
+    "height": 497,
     "crop_x_percent": 0.69,
     "crop_y_percent": 0.61,
     "crop_width_percent": 0.31000000000000005,
@@ -29,10 +29,10 @@
     "scale_mode": "fill"
   },
   "gameplay": {
-    "x": 114,
-    "y": 734,
-    "width": 836,
-    "height": 470,
+    "x": -113,
+    "y": 525,
+    "width": 1833,
+    "height": 1031,
     "crop_x_percent": 0,
     "crop_y_percent": 0,
     "crop_width_percent": 1,
@@ -40,5 +40,13 @@
     "visible": true,
     "z_index": 1,
     "scale_mode": "stretch"
+  },
+  "subtitles": {
+    "font_name": "Montserrat",
+    "font_size": 10,
+    "primary_color": "#FFFF00",
+    "outline_color": "#000000",
+    "margin_v": 50,
+    "alignment": 2
   }
 }

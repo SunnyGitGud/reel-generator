@@ -13,6 +13,21 @@ let state = {
     redoStack: []
 };
 
+// Subtitle State
+let subtitleState = {
+    srtPath: '',
+    style: {
+        font_name: 'Montserrat',
+        font_size: 32,
+        primary_color: '#FFFF00',
+        outline_color: '#000000',
+        margin_v: 50,
+        alignment: 2
+    },
+    subtitles: [],
+    selectedSubIndex: -1
+};
+
 // DOM Elements
 const canvasContainer = document.getElementById('canvas-container');
 const layerOverlayContainer = document.getElementById('layer-overlay-container');
@@ -26,6 +41,27 @@ const zoomLabel = document.getElementById('zoom-label');
 const toast = document.getElementById('toast');
 const btnUndo = document.getElementById('btn-undo');
 const btnRedo = document.getElementById('btn-redo');
+
+// Subtitles DOM elements
+const subFont = document.getElementById('sub-font');
+const subSize = document.getElementById('sub-size');
+const subSizeVal = document.getElementById('sub-size-val');
+const subPrimaryColor = document.getElementById('sub-primary-color');
+const subPrimaryColorText = document.getElementById('sub-primary-color-text');
+const subOutlineColor = document.getElementById('sub-outline-color');
+const subOutlineColorText = document.getElementById('sub-outline-color-text');
+const subMarginV = document.getElementById('sub-margin-v');
+const subMarginVVal = document.getElementById('sub-margin-v-val');
+const subtitlesContainer = document.getElementById('subtitles-container');
+const canvasSubtitlePreview = document.getElementById('canvas-subtitle-preview');
+const captionCount = document.getElementById('caption-count');
+const btnAddCaption = document.getElementById('btn-add-caption');
+
+// Tabs DOM elements
+const tabBtnStyle = document.getElementById('tab-btn-style');
+const tabBtnList = document.getElementById('tab-btn-list');
+const tabContentStyle = document.getElementById('tab-content-style');
+const tabContentList = document.getElementById('tab-content-list');
 
 // Preview mode toggle helper
 function setPreviewMode(showPreview) {
@@ -78,7 +114,14 @@ const btnZoomFit = document.getElementById('btn-zoom-fit');
 // Initialize editor on load
 window.addEventListener('DOMContentLoaded', () => {
     fetchLayout();
+    fetchSubtitles();
     setupEventListeners();
+    setupSubtitleTabs();
+    setupAlignmentGrid();
+    setupSubtitleStyleListeners();
+    if (btnAddCaption) {
+        btnAddCaption.addEventListener('click', addNewSubtitleItem);
+    }
 });
 
 // Fetch layout info from backend
@@ -424,6 +467,8 @@ function applyZoom() {
             updateFramePosition(frame, layer);
         }
     });
+    
+    updateCanvasSubtitlePreview();
 }
 
 function fitCanvasToViewport() {
@@ -1013,4 +1058,425 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
+}
+
+// Subtitles Features
+function setupSubtitleTabs() {
+    if (!tabBtnStyle || !tabBtnList) return;
+    tabBtnStyle.addEventListener('click', () => {
+        tabBtnStyle.classList.add('active');
+        tabBtnList.classList.remove('active');
+        tabContentStyle.classList.add('active');
+        tabContentStyle.style.display = 'flex';
+        tabContentList.classList.remove('active');
+        tabContentList.style.display = 'none';
+    });
+    tabBtnList.addEventListener('click', () => {
+        tabBtnList.classList.add('active');
+        tabBtnStyle.classList.remove('active');
+        tabContentList.classList.add('active');
+        tabContentList.style.display = 'flex';
+        tabContentStyle.classList.remove('active');
+        tabContentStyle.style.display = 'none';
+    });
+}
+
+function setupAlignmentGrid() {
+    document.querySelectorAll('.alignment-grid .align-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.alignment-grid .align-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            subtitleState.style.alignment = parseInt(btn.dataset.align);
+            updateCanvasSubtitlePreview();
+            saveSubtitleStyleDebounced();
+        });
+    });
+}
+
+function updateAlignmentGridUI(alignValue) {
+    document.querySelectorAll('.alignment-grid .align-btn').forEach(btn => {
+        if (parseInt(btn.dataset.align) === alignValue) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+function updateCanvasSubtitlePreview() {
+    if (!canvasSubtitlePreview) return;
+
+    // Set text content to active subtitle
+    if (subtitleState.subtitles.length > 0 && subtitleState.selectedSubIndex >= 0 && subtitleState.selectedSubIndex < subtitleState.subtitles.length) {
+        canvasSubtitlePreview.textContent = subtitleState.subtitles[subtitleState.selectedSubIndex].text;
+        canvasSubtitlePreview.style.display = 'block';
+    } else if (subtitleState.subtitles.length > 0) {
+        canvasSubtitlePreview.textContent = subtitleState.subtitles[0].text;
+        canvasSubtitlePreview.style.display = 'block';
+    } else {
+        canvasSubtitlePreview.textContent = 'Subtitle Preview';
+        canvasSubtitlePreview.style.display = 'block';
+    }
+
+    const style = subtitleState.style;
+    const fontName = style.font_name || 'Montserrat';
+    const fontSize = (style.font_size || 32) * state.zoom;
+    const marginV = (style.margin_v || 50) * state.zoom;
+    const primaryColor = style.primary_color || '#FFFF00';
+    const outlineColor = style.outline_color || '#000000';
+    const alignment = style.alignment || 2;
+
+    canvasSubtitlePreview.style.fontFamily = `"${fontName}", sans-serif`;
+    canvasSubtitlePreview.style.fontSize = `${fontSize}px`;
+    canvasSubtitlePreview.style.color = primaryColor;
+    
+    const outlineWidth = Math.max(1, Math.round(3 * state.zoom));
+    canvasSubtitlePreview.style.webkitTextStroke = `${outlineWidth}px ${outlineColor}`;
+    canvasSubtitlePreview.style.textShadow = `0px 0px 4px ${outlineColor}`;
+
+    canvasSubtitlePreview.style.left = 'auto';
+    canvasSubtitlePreview.style.right = 'auto';
+    canvasSubtitlePreview.style.top = 'auto';
+    canvasSubtitlePreview.style.bottom = 'auto';
+    canvasSubtitlePreview.style.transform = 'none';
+
+    const marginLR = 20 * state.zoom;
+
+    switch (alignment) {
+        case 1:
+            canvasSubtitlePreview.style.left = `${marginLR}px`;
+            canvasSubtitlePreview.style.bottom = `${marginV}px`;
+            canvasSubtitlePreview.style.textAlign = 'left';
+            break;
+        case 2:
+            canvasSubtitlePreview.style.left = '50%';
+            canvasSubtitlePreview.style.transform = 'translateX(-50%)';
+            canvasSubtitlePreview.style.bottom = `${marginV}px`;
+            canvasSubtitlePreview.style.textAlign = 'center';
+            break;
+        case 3:
+            canvasSubtitlePreview.style.right = `${marginLR}px`;
+            canvasSubtitlePreview.style.bottom = `${marginV}px`;
+            canvasSubtitlePreview.style.textAlign = 'right';
+            break;
+        case 4:
+            canvasSubtitlePreview.style.left = `${marginLR}px`;
+            canvasSubtitlePreview.style.top = '50%';
+            canvasSubtitlePreview.style.transform = 'translateY(-50%)';
+            canvasSubtitlePreview.style.textAlign = 'left';
+            break;
+        case 5:
+            canvasSubtitlePreview.style.left = '50%';
+            canvasSubtitlePreview.style.top = '50%';
+            canvasSubtitlePreview.style.transform = 'translate(-50%, -50%)';
+            canvasSubtitlePreview.style.textAlign = 'center';
+            break;
+        case 6:
+            canvasSubtitlePreview.style.right = `${marginLR}px`;
+            canvasSubtitlePreview.style.top = '50%';
+            canvasSubtitlePreview.style.transform = 'translateY(-50%)';
+            canvasSubtitlePreview.style.textAlign = 'right';
+            break;
+        case 7:
+            canvasSubtitlePreview.style.left = `${marginLR}px`;
+            canvasSubtitlePreview.style.top = `${marginV}px`;
+            canvasSubtitlePreview.style.textAlign = 'left';
+            break;
+        case 8:
+            canvasSubtitlePreview.style.left = '50%';
+            canvasSubtitlePreview.style.transform = 'translateX(-50%)';
+            canvasSubtitlePreview.style.top = `${marginV}px`;
+            canvasSubtitlePreview.style.textAlign = 'center';
+            break;
+        case 9:
+            canvasSubtitlePreview.style.right = `${marginLR}px`;
+            canvasSubtitlePreview.style.top = `${marginV}px`;
+            canvasSubtitlePreview.style.textAlign = 'right';
+            break;
+    }
+}
+
+let subStyleTimeout;
+function saveSubtitleStyleDebounced() {
+    clearTimeout(subStyleTimeout);
+    subStyleTimeout = setTimeout(async () => {
+        try {
+            await fetch('/api/subtitles/style', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(subtitleState.style)
+            });
+        } catch (err) {
+            console.error('Failed to save subtitle style:', err);
+        }
+    }, 500);
+}
+
+let subEditTimeout;
+function saveSubtitlesDebounced() {
+    clearTimeout(subEditTimeout);
+    subEditTimeout = setTimeout(async () => {
+        try {
+            await fetch('/api/subtitles/edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subtitles: subtitleState.subtitles })
+            });
+        } catch (err) {
+            console.error('Failed to save subtitles:', err);
+        }
+    }, 600);
+}
+
+async function fetchSubtitles() {
+    try {
+        const response = await fetch('/api/subtitles');
+        const data = await response.json();
+        
+        subtitleState.srtPath = data.srt_path;
+        subtitleState.style = data.style || {
+            font_name: 'Montserrat',
+            font_size: 32,
+            primary_color: '#FFFF00',
+            outline_color: '#000000',
+            margin_v: 50,
+            alignment: 2
+        };
+        subtitleState.subtitles = data.subtitles || [];
+        
+        if (subFont) subFont.value = subtitleState.style.font_name;
+        if (subSize) {
+            subSize.value = subtitleState.style.font_size;
+            subSizeVal.textContent = `${subtitleState.style.font_size}px`;
+        }
+        if (subPrimaryColor) {
+            subPrimaryColor.value = subtitleState.style.primary_color;
+            subPrimaryColorText.value = subtitleState.style.primary_color;
+        }
+        if (subOutlineColor) {
+            subOutlineColor.value = subtitleState.style.outline_color;
+            subOutlineColorText.value = subtitleState.style.outline_color;
+        }
+        if (subMarginV) {
+            subMarginV.value = subtitleState.style.margin_v;
+            subMarginVVal.textContent = `${subtitleState.style.margin_v}px`;
+        }
+        
+        updateAlignmentGridUI(subtitleState.style.alignment);
+        renderSubtitleList();
+        updateCanvasSubtitlePreview();
+    } catch (err) {
+        console.error('Error fetching subtitles:', err);
+    }
+}
+
+function renderSubtitleList() {
+    if (!subtitlesContainer) return;
+    subtitlesContainer.innerHTML = '';
+    
+    captionCount.textContent = `${subtitleState.subtitles.length} captions`;
+    
+    subtitleState.subtitles.forEach((sub, index) => {
+        const card = document.createElement('div');
+        card.className = `subtitle-card ${subtitleState.selectedSubIndex === index ? 'active' : ''}`;
+        card.dataset.index = index;
+        
+        card.addEventListener('mousedown', () => {
+            selectSubtitleCard(index);
+        });
+        
+        const header = document.createElement('div');
+        header.className = 'subtitle-card-header';
+        
+        const idxLabel = document.createElement('span');
+        idxLabel.className = 'subtitle-index';
+        idxLabel.textContent = `INDEX #${sub.index}`;
+        
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'subtitle-time-inputs';
+        
+        const startInput = document.createElement('input');
+        startInput.type = 'number';
+        startInput.step = '0.05';
+        startInput.min = '0';
+        startInput.value = sub.start.toFixed(2);
+        startInput.addEventListener('change', (e) => {
+            const val = parseFloat(e.target.value) || 0;
+            sub.start = val;
+            saveSubtitlesDebounced();
+        });
+        
+        const sep = document.createElement('span');
+        sep.className = 'subtitle-time-separator';
+        sep.textContent = '→';
+        
+        const endInput = document.createElement('input');
+        endInput.type = 'number';
+        endInput.step = '0.05';
+        endInput.min = '0';
+        endInput.value = sub.end.toFixed(2);
+        endInput.addEventListener('change', (e) => {
+            const val = parseFloat(e.target.value) || 0;
+            sub.end = val;
+            saveSubtitlesDebounced();
+        });
+        
+        timeDiv.appendChild(startInput);
+        timeDiv.appendChild(sep);
+        timeDiv.appendChild(endInput);
+        
+        header.appendChild(idxLabel);
+        header.appendChild(timeDiv);
+        
+        const body = document.createElement('div');
+        body.className = 'subtitle-card-body';
+        
+        const txt = document.createElement('textarea');
+        txt.className = 'subtitle-text-area';
+        txt.value = sub.text;
+        txt.addEventListener('input', (e) => {
+            sub.text = e.target.value;
+            updateCanvasSubtitlePreview();
+            saveSubtitlesDebounced();
+        });
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete-subtitle';
+        delBtn.innerHTML = '🗑️';
+        delBtn.title = 'Delete Caption';
+        delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSubtitleItem(index);
+        });
+        
+        body.appendChild(txt);
+        body.appendChild(delBtn);
+        
+        card.appendChild(header);
+        card.appendChild(body);
+        
+        subtitlesContainer.appendChild(card);
+    });
+}
+
+function deleteSubtitleItem(index) {
+    if (confirm("Are you sure you want to delete this caption?")) {
+        subtitleState.subtitles.splice(index, 1);
+        subtitleState.subtitles.forEach((sub, i) => {
+            sub.index = i + 1;
+        });
+        
+        if (subtitleState.selectedSubIndex >= subtitleState.subtitles.length) {
+            subtitleState.selectedSubIndex = subtitleState.subtitles.length - 1;
+        }
+        
+        renderSubtitleList();
+        updateCanvasSubtitlePreview();
+        saveSubtitlesDebounced();
+    }
+}
+
+function selectSubtitleCard(index) {
+    subtitleState.selectedSubIndex = index;
+    document.querySelectorAll('.subtitle-card').forEach((card, idx) => {
+        if (idx === index) {
+            card.classList.add('active');
+        } else {
+            card.classList.remove('active');
+        }
+    });
+    updateCanvasSubtitlePreview();
+}
+
+function addNewSubtitleItem() {
+    let newStart = 0.0;
+    let newEnd = 2.0;
+    
+    if (subtitleState.subtitles.length > 0) {
+        const lastSub = subtitleState.subtitles[subtitleState.subtitles.length - 1];
+        newStart = lastSub.end + 0.1;
+        newEnd = newStart + 2.0;
+    }
+    
+    const newIndex = subtitleState.subtitles.length + 1;
+    const newSub = {
+        index: newIndex,
+        start: newStart,
+        end: newEnd,
+        text: 'New subtitle text'
+    };
+    
+    subtitleState.subtitles.push(newSub);
+    subtitleState.selectedSubIndex = subtitleState.subtitles.length - 1;
+    
+    renderSubtitleList();
+    updateCanvasSubtitlePreview();
+    
+    setTimeout(() => {
+        if (subtitlesContainer) {
+            subtitlesContainer.scrollTop = subtitlesContainer.scrollHeight;
+        }
+    }, 50);
+    
+    saveSubtitlesDebounced();
+}
+
+function setupSubtitleStyleListeners() {
+    if (!subFont) return;
+    
+    subFont.addEventListener('change', () => {
+        subtitleState.style.font_name = subFont.value;
+        updateCanvasSubtitlePreview();
+        saveSubtitleStyleDebounced();
+    });
+    
+    subSize.addEventListener('input', () => {
+        subtitleState.style.font_size = parseInt(subSize.value);
+        subSizeVal.textContent = `${subSize.value}px`;
+        updateCanvasSubtitlePreview();
+        saveSubtitleStyleDebounced();
+    });
+    
+    subMarginV.addEventListener('input', () => {
+        subtitleState.style.margin_v = parseInt(subMarginV.value);
+        subMarginVVal.textContent = `${subMarginV.value}px`;
+        updateCanvasSubtitlePreview();
+        saveSubtitleStyleDebounced();
+    });
+    
+    subPrimaryColor.addEventListener('input', () => {
+        subPrimaryColorText.value = subPrimaryColor.value;
+        subtitleState.style.primary_color = subPrimaryColor.value;
+        updateCanvasSubtitlePreview();
+        saveSubtitleStyleDebounced();
+    });
+    
+    subPrimaryColorText.addEventListener('change', () => {
+        let val = subPrimaryColorText.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+            subPrimaryColor.value = val;
+            subtitleState.style.primary_color = val;
+            updateCanvasSubtitlePreview();
+            saveSubtitleStyleDebounced();
+        }
+    });
+    
+    subOutlineColor.addEventListener('input', () => {
+        subOutlineColorText.value = subOutlineColor.value;
+        subtitleState.style.outline_color = subOutlineColor.value;
+        updateCanvasSubtitlePreview();
+        saveSubtitleStyleDebounced();
+    });
+    
+    subOutlineColorText.addEventListener('change', () => {
+        let val = subOutlineColorText.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+            subOutlineColor.value = val;
+            subtitleState.style.outline_color = val;
+            updateCanvasSubtitlePreview();
+            saveSubtitleStyleDebounced();
+        }
+    });
 }

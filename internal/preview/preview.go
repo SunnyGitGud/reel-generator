@@ -17,9 +17,9 @@ func NewPreviewService(inputVideo string) *PreviewService {
 	}
 }
 
-func (s *PreviewService) GeneratePreview(inputArgs []string, layers []ffmpeg.RenderLayer, outputPath string) error {
-	// Build filter graph without subtitles for composition layout editing
-	filterGraph := ffmpeg.BuildFilterGraph(layers, "")
+func (s *PreviewService) GeneratePreview(inputArgs []string, layers []ffmpeg.RenderLayer, outputPath string, assFilePath string) error {
+	// Build filter graph with optional subtitles
+	filterGraph := ffmpeg.BuildFilterGraph(layers, assFilePath)
 
 	// Construct final arguments
 	args := append(inputArgs, "-filter_complex", filterGraph, "-vframes", "1", outputPath)

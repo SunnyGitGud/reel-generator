@@ -34,11 +34,21 @@ type LayerConfig struct {
 	ScaleMode         string  `json:"scale_mode,omitempty"`
 }
 
+type SubtitlePresetConfig struct {
+	FontName     string `json:"font_name,omitempty"`
+	FontSize     int    `json:"font_size,omitempty"`
+	PrimaryColor string `json:"primary_color,omitempty"`
+	OutlineColor string `json:"outline_color,omitempty"`
+	MarginV      int    `json:"margin_v,omitempty"`
+	Alignment    int    `json:"alignment,omitempty"`
+}
+
 type Preset struct {
-	Crop     Crop        `json:"crop"`
-	Overlay  Overlay     `json:"overlay"`
-	Facecam  LayerConfig `json:"facecam"`
-	Gameplay LayerConfig `json:"gameplay"`
+	Crop      Crop                  `json:"crop"`
+	Overlay   Overlay               `json:"overlay"`
+	Facecam   LayerConfig           `json:"facecam"`
+	Gameplay  LayerConfig           `json:"gameplay"`
+	Subtitles *SubtitlePresetConfig `json:"subtitles,omitempty"`
 }
 
 type Layer struct {

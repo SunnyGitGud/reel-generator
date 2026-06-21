@@ -18,6 +18,7 @@ import (
 	"github.com/yourname/video-editor/internal/ffmpeg"
 	"github.com/yourname/video-editor/internal/preset"
 	"github.com/yourname/video-editor/internal/preview"
+	"github.com/yourname/video-editor/internal/subtitle"
 )
 
 //go:embed static/*
@@ -32,6 +33,8 @@ type Server struct {
 	layers         []actions.RenderLayer
 	previewService *preview.PreviewService
 	previewPath    string
+	srtPath        string
+	assPath        string
 	mu             sync.Mutex
 	httpServer     *http.Server
 }
@@ -82,7 +85,7 @@ type ExportRequest struct {
 	Name string `json:"name"`
 }
 
-func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int, previewPath string) (*Server, error) {
+func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int, previewPath string, srtPath string, assPath string) (*Server, error) {
 	p, err := preset.Load(presetPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load preset: %w", err)
@@ -100,6 +103,8 @@ func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int
 		layers:         concreteLayers,
 		previewService: previewService,
 		previewPath:    previewPath,
+		srtPath:        srtPath,
+		assPath:        assPath,
 	}, nil
 }
 
@@ -146,6 +151,9 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/layout/preview", s.handleRegeneratePreview)
 	mux.HandleFunc("/api/layout/save", s.handleSaveLayout)
 	mux.HandleFunc("/api/layout/export", s.handleExportLayout)
+	mux.HandleFunc("/api/subtitles", s.handleGetSubtitles)
+	mux.HandleFunc("/api/subtitles/style", s.handleUpdateSubtitlesStyle)
+	mux.HandleFunc("/api/subtitles/edit", s.handleEditSubtitles)
 	mux.HandleFunc("/api/preview.png", s.handleServePreviewImage)
 	mux.HandleFunc("/api/raw-frame.png", s.handleServeRawFrameImage)
 	mux.HandleFunc("/api/overlay-image", s.handleServeOverlayImage)
@@ -195,7 +203,15 @@ func (s *Server) generatePreviewFile() error {
 	previewArgs := []string{"-y", "-ss", "00:00:00"}
 	previewArgs = append(previewArgs, inputArgs...)
 
-	return s.previewService.GeneratePreview(previewArgs, activeLayers, s.previewPath)
+	// Only burn subtitles if the ASS file actually exists on disk
+	activeASSPath := ""
+	if s.assPath != "" {
+		if _, err := os.Stat(s.assPath); err == nil {
+			activeASSPath = s.assPath
+		}
+	}
+
+	return s.previewService.GeneratePreview(previewArgs, activeLayers, s.previewPath, activeASSPath)
 }
 
 func (s *Server) handleGetLayout(w http.ResponseWriter, r *http.Request) {
@@ -566,4 +582,265 @@ func (s *Server) handleExportLayout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+type SubtitleItemResponse struct {
+	Index int     `json:"index"`
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+	Text  string  `json:"text"`
+}
+
+type SubtitleStyleResponse struct {
+	FontName     string `json:"font_name"`
+	FontSize     int    `json:"font_size"`
+	PrimaryColor string `json:"primary_color"`
+	OutlineColor string `json:"outline_color"`
+	MarginV      int    `json:"margin_v"`
+	Alignment    int    `json:"alignment"`
+}
+
+type SubtitlesResponse struct {
+	SRTPath   string                 `json:"srt_path"`
+	Style     SubtitleStyleResponse  `json:"style"`
+	Subtitles []SubtitleItemResponse `json:"subtitles"`
+}
+
+type UpdateSubtitleStyleRequest struct {
+	FontName     string `json:"font_name"`
+	FontSize     int    `json:"font_size"`
+	PrimaryColor string `json:"primary_color"`
+	OutlineColor string `json:"outline_color"`
+	MarginV      int    `json:"margin_v"`
+	Alignment    int    `json:"alignment"`
+}
+
+type EditSubtitlesRequest struct {
+	Subtitles []SubtitleItemResponse `json:"subtitles"`
+}
+
+func (s *Server) handleGetSubtitles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var items []SubtitleItemResponse
+	if s.srtPath != "" {
+		if _, err := os.Stat(s.srtPath); err == nil {
+			track, err := subtitle.ParseSRT(s.srtPath)
+			if err == nil && track != nil {
+				for _, it := range track.Items {
+					items = append(items, SubtitleItemResponse{
+						Index: it.Index,
+						Start: it.Start,
+						End:   it.End,
+						Text:  it.Text,
+					})
+				}
+			}
+		}
+	}
+
+	// Current style
+	pStyle := getSubtitleStyle(s.preset)
+	styleResp := SubtitleStyleResponse{
+		FontName:     pStyle.FontName,
+		FontSize:     pStyle.FontSize,
+		PrimaryColor: fmt.Sprintf("#%02X%02X%02X", pStyle.PrimaryColor.R, pStyle.PrimaryColor.G, pStyle.PrimaryColor.B),
+		OutlineColor: fmt.Sprintf("#%02X%02X%02X", pStyle.OutlineColor.R, pStyle.OutlineColor.G, pStyle.OutlineColor.B),
+		MarginV:      pStyle.MarginV,
+		Alignment:    pStyle.Alignment,
+	}
+
+	resp := SubtitlesResponse{
+		SRTPath:   s.srtPath,
+		Style:     styleResp,
+		Subtitles: items,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleUpdateSubtitlesStyle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req UpdateSubtitleStyleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.preset.Subtitles == nil {
+		s.preset.Subtitles = &preset.SubtitlePresetConfig{}
+	}
+
+	s.preset.Subtitles.FontName = req.FontName
+	s.preset.Subtitles.FontSize = req.FontSize
+	s.preset.Subtitles.PrimaryColor = req.PrimaryColor
+	s.preset.Subtitles.OutlineColor = req.OutlineColor
+	s.preset.Subtitles.MarginV = req.MarginV
+	s.preset.Subtitles.Alignment = req.Alignment
+
+	// Save preset to disk
+	data, err := json.MarshalIndent(s.preset, "", "  ")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	if err := os.WriteFile(s.presetPath, data, 0644); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	// Regenerate ASS file
+	if err := s.regenerateASSFile(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+func (s *Server) handleEditSubtitles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req EditSubtitlesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.srtPath == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "srt path not configured"})
+		return
+	}
+
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(s.srtPath), 0755); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	track := subtitle.NewSubtitleTrack()
+	for _, item := range req.Subtitles {
+		track.Add(subtitle.Subtitle{
+			Index: item.Index,
+			Start: item.Start,
+			End:   item.End,
+			Text:  item.Text,
+		})
+	}
+
+	if err := track.SaveSRT(s.srtPath); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	// Regenerate ASS file
+	if err := s.regenerateASSFile(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+// regenerateASSFile helper (must be called with s.mu locked)
+func (s *Server) regenerateASSFile() error {
+	if s.srtPath == "" || s.assPath == "" {
+		return nil
+	}
+
+	// Check if SRT exists; if not, there is nothing to generate
+	if _, err := os.Stat(s.srtPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	track, err := subtitle.ParseSRT(s.srtPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse SRT for ASS generation: %w", err)
+	}
+
+	style := getSubtitleStyle(s.preset)
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(s.assPath), 0755); err != nil {
+		return err
+	}
+
+	if err := subtitle.GenerateASSFromTrack(track, style, s.assPath); err != nil {
+		return fmt.Errorf("failed to generate ASS: %w", err)
+	}
+
+	return nil
+}
+
+func getSubtitleStyle(p *preset.Preset) subtitle.SubtitleStyle {
+	style := subtitle.TikTokStyle()
+	if p.Subtitles == nil {
+		return style
+	}
+	if p.Subtitles.FontName != "" {
+		style.FontName = p.Subtitles.FontName
+	}
+	if p.Subtitles.FontSize != 0 {
+		style.FontSize = p.Subtitles.FontSize
+	}
+	if p.Subtitles.PrimaryColor != "" {
+		if c, err := parseHexColor(p.Subtitles.PrimaryColor); err == nil {
+			style.PrimaryColor = c
+		}
+	}
+	if p.Subtitles.OutlineColor != "" {
+		if c, err := parseHexColor(p.Subtitles.OutlineColor); err == nil {
+			style.OutlineColor = c
+		}
+	}
+	if p.Subtitles.MarginV != 0 {
+		style.MarginV = p.Subtitles.MarginV
+	}
+	if p.Subtitles.Alignment != 0 {
+		style.Alignment = p.Subtitles.Alignment
+	}
+	return style
+}
+
+func parseHexColor(hex string) (subtitle.Color, error) {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) != 6 {
+		return subtitle.Color{}, fmt.Errorf("invalid hex color: %s", hex)
+	}
+	var r, g, b int
+	_, err := fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
+	if err != nil {
+		return subtitle.Color{}, err
+	}
+	return subtitle.NewColor(r, g, b), nil
 }
