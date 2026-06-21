@@ -13,7 +13,28 @@
 </head>
 
 <body>
-    <div class="app-container">
+    <!-- Front Page Container -->
+    <div id="front-page">
+        <div class="front-page-content">
+            <h1>Reel Generator</h1>
+            <p>Paste a YouTube URL below to download, transcribe, and visually format it into a vertical reel.</p>
+            <div class="url-input-container">
+                <input id="yt-url-input" type="text" placeholder="YouTube link or local video path here..." required>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 10px 0; font-size: 0.9rem; color: var(--text-muted);">
+                    <input id="chk-render-subtitles" type="checkbox" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--color-accent);">
+                    <label for="chk-render-subtitles" style="cursor: pointer; user-select: none;">Include Subtitles</label>
+                </div>
+                <button id="btn-create-project" class="btn btn-primary">Generate</button>
+            </div>
+            <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+                <div id="loading-status" class="loading-status">Downloading video...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Editor Interface -->
+    <div id="editor-container" class="app-container" style="display: none;">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -150,6 +171,10 @@
                     <span class="btn-icon"></span>
                     Export Layout
                 </button>
+                <button id="btn-render-video" class="btn btn-primary" style="background-color: var(--color-accent); border-color: var(--color-accent);">
+                    <span class="btn-icon">🎬</span>
+                    Render Video
+                </button>
             </div>
         </aside>
 
@@ -165,6 +190,10 @@
                     <span style="color: var(--border-color); margin: 0 4px;">|</span>
                     <button id="btn-undo" class="zoom-btn" title="Undo (Ctrl+Z)">↶</button>
                     <button id="btn-redo" class="zoom-btn" title="Redo (Ctrl+Y)">↷</button>
+                    <span style="color: var(--border-color); margin: 0 4px;">|</span>
+                    <select id="select-preset-layout" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 4px 8px; border-radius: 6px; outline: none; font-size: 0.8rem; cursor: pointer; max-width: 140px;">
+                        <option value="">Load Layout...</option>
+                    </select>
                 </div>
                 <div class="hint-text">
                     Nudge with Arrow Keys (Shift for 10px)

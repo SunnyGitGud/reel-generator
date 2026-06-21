@@ -18,7 +18,9 @@ import (
 	"github.com/yourname/video-editor/internal/ffmpeg"
 	"github.com/yourname/video-editor/internal/preset"
 	"github.com/yourname/video-editor/internal/preview"
+	"github.com/yourname/video-editor/internal/renderer"
 	"github.com/yourname/video-editor/internal/subtitle"
+	"github.com/yourname/video-editor/internal/transcription"
 )
 
 //go:embed static/*
@@ -38,6 +40,8 @@ type Server struct {
 	currentTime    float64
 	mu             sync.Mutex
 	httpServer     *http.Server
+	cliURL         string
+	isRendering    bool
 }
 
 type LayerResponse struct {
@@ -110,15 +114,19 @@ func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int
 }
 
 func (s *Server) Start(port int) error {
-	// Generate initial preview image before starting server
-	log.Println("Generating initial preview image...")
-	if err := s.generatePreviewFile(); err != nil {
-		log.Printf("Warning: failed to generate initial preview: %v\n", err)
-	}
+	if s.inputVideo != "" {
+		// Generate initial preview image before starting server
+		log.Println("Generating initial preview image...")
+		if err := s.generatePreviewFile(); err != nil {
+			log.Printf("Warning: failed to generate initial preview: %v\n", err)
+		}
 
-	log.Println("Generating raw reference frame image...")
-	if err := s.generateRawFrameFile(); err != nil {
-		log.Printf("Warning: failed to generate raw reference frame: %v\n", err)
+		log.Println("Generating raw reference frame image...")
+		if err := s.generateRawFrameFile(); err != nil {
+			log.Printf("Warning: failed to generate raw reference frame: %v\n", err)
+		}
+	} else {
+		log.Println("Starting server in empty project mode. Waiting for YouTube URL submission...")
 	}
 
 	mux := http.NewServeMux()
@@ -146,12 +154,17 @@ func (s *Server) Start(port int) error {
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSubFS))))
 
 	// API Endpoints
+	mux.HandleFunc("/api/project/status", s.handleProjectStatus)
+	mux.HandleFunc("/api/project/create", s.handleProjectCreate)
+	mux.HandleFunc("/api/project/render", s.handleProjectRender)
 	mux.HandleFunc("/api/layout", s.handleGetLayout)
 	mux.HandleFunc("/api/layout/position", s.handleUpdatePosition)
 	mux.HandleFunc("/api/layout/size", s.handleUpdateSize)
 	mux.HandleFunc("/api/layout/preview", s.handleRegeneratePreview)
 	mux.HandleFunc("/api/layout/save", s.handleSaveLayout)
 	mux.HandleFunc("/api/layout/export", s.handleExportLayout)
+	mux.HandleFunc("/api/layouts", s.handleListLayouts)
+	mux.HandleFunc("/api/layout/load", s.handleLoadLayout)
 	mux.HandleFunc("/api/subtitles", s.handleGetSubtitles)
 	mux.HandleFunc("/api/subtitles/style", s.handleUpdateSubtitlesStyle)
 	mux.HandleFunc("/api/subtitles/edit", s.handleEditSubtitles)
@@ -181,6 +194,18 @@ func (s *Server) Stop() {
 		log.Println("Shutting down Layout Editor server...")
 		s.httpServer.Close()
 	}
+
+	log.Println("Cleaning up temporary editing thumbnails and frame cache...")
+	os.RemoveAll("output/thumbnails")
+	os.RemoveAll("output/frames")
+	os.Remove("output/raw_frame.png")
+	os.Remove("output/preview.png")
+}
+
+func (s *Server) SetCliURL(url string) {
+	s.mu.Lock()
+	s.cliURL = url
+	s.mu.Unlock()
 }
 
 func (s *Server) GetLayers() []actions.RenderLayer {
@@ -193,6 +218,10 @@ func (s *Server) generatePreviewFile() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.inputVideo == "" {
+		return nil
+	}
+
 	// Ensure output directory for preview path exists
 	dir := filepath.Dir(s.previewPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -202,9 +231,10 @@ func (s *Server) generatePreviewFile() error {
 	// Resolve input indices and overlay layers dynamically
 	inputArgs, activeLayers := actions.BuildRenderingGraph(s.layers, s.inputVideo)
 
-	// Prepend -y and -ss <s.currentTime> to inputArgs
-	previewArgs := []string{"-y", "-ss", fmt.Sprintf("%.3f", s.currentTime)}
+	// Construct preview arguments with output seeking to preserve timestamps for the subtitle ASS filter
+	previewArgs := []string{"-y"}
 	previewArgs = append(previewArgs, inputArgs...)
+	previewArgs = append(previewArgs, "-ss", fmt.Sprintf("%.3f", s.currentTime))
 
 	// Only burn subtitles if the ASS file actually exists on disk
 	activeASSPath := ""
@@ -450,13 +480,27 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleServePreviewImage(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	inputVideo := s.inputVideo
+	previewPath := s.previewPath
+	s.mu.Unlock()
+
+	if inputVideo == "" || !fileExists(previewPath) {
+		http.Error(w, "no preview available", http.StatusNotFound)
+		return
+	}
+
 	// Serve the output PNG preview file directly from the filesystem
-	http.ServeFile(w, r, s.previewPath)
+	http.ServeFile(w, r, previewPath)
 }
 
 func (s *Server) generateRawFrameFile() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.inputVideo == "" {
+		return nil
+	}
 
 	rawFramePath := "output/raw_frame.png"
 	dir := filepath.Dir(rawFramePath)
@@ -482,6 +526,15 @@ func (s *Server) generateRawFrameFile() error {
 }
 
 func (s *Server) handleServeRawFrameImage(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	inputVideo := s.inputVideo
+	s.mu.Unlock()
+
+	if inputVideo == "" {
+		http.Error(w, "no active project", http.StatusBadRequest)
+		return
+	}
+
 	timeStr := r.URL.Query().Get("time")
 	if timeStr == "" {
 		http.ServeFile(w, r, "output/raw_frame.png")
@@ -930,7 +983,20 @@ type TimelineResponse struct {
 }
 
 func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
-	duration, err := getVideoDuration(s.inputVideo)
+	s.mu.Lock()
+	inputVideo := s.inputVideo
+	s.mu.Unlock()
+
+	if inputVideo == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(TimelineResponse{
+			Duration: 0,
+			Count:    0,
+		})
+		return
+	}
+
+	duration, err := getVideoDuration(inputVideo)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -945,6 +1011,15 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleServeTimelineThumbnail(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	inputVideo := s.inputVideo
+	s.mu.Unlock()
+
+	if inputVideo == "" {
+		http.Error(w, "no active project", http.StatusBadRequest)
+		return
+	}
+
 	indexStr := r.URL.Query().Get("index")
 	var idx int
 	if _, err := fmt.Sscanf(indexStr, "%d", &idx); err != nil {
@@ -952,7 +1027,7 @@ func (s *Server) handleServeTimelineThumbnail(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	duration, err := getVideoDuration(s.inputVideo)
+	duration, err := getVideoDuration(inputVideo)
 	if err != nil {
 		http.Error(w, "failed to get video duration: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -999,3 +1074,410 @@ func (s *Server) handleServeTimelineThumbnail(w http.ResponseWriter, r *http.Req
 
 	http.ServeFile(w, r, thumbPath)
 }
+
+type ProjectStatusResponse struct {
+	Active     bool   `json:"active"`
+	InputVideo string `json:"input_video"`
+	CliURL     string `json:"cli_url,omitempty"`
+}
+
+func (s *Server) handleProjectStatus(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	active := s.inputVideo != ""
+	inputVideo := s.inputVideo
+	cliURL := s.cliURL
+	s.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ProjectStatusResponse{
+		Active:     active,
+		InputVideo: inputVideo,
+		CliURL:     cliURL,
+	})
+}
+
+type ProjectCreateRequest struct {
+	URL           string `json:"url"`
+	SkipSubtitles bool   `json:"skip_subtitles"`
+}
+
+func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ProjectCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	youtubeURL := strings.TrimSpace(req.URL)
+	if youtubeURL == "" {
+		http.Error(w, "URL or path is required", http.StatusBadRequest)
+		return
+	}
+
+	var videoPath string
+	if strings.HasPrefix(youtubeURL, "http://") || strings.HasPrefix(youtubeURL, "https://") {
+		var downloadErr error
+		videoPath, downloadErr = s.downloadVideo(youtubeURL)
+		if downloadErr != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to download: " + downloadErr.Error()})
+			return
+		}
+	} else {
+		if !fileExists(youtubeURL) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "local video file not found: " + youtubeURL})
+			return
+		}
+		videoPath = youtubeURL
+	}
+
+	baseName := filepath.Base(videoPath)
+	inputBaseNoExt := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	srtPath := filepath.Join("output", inputBaseNoExt+".srt")
+	assPath := filepath.Join("output", inputBaseNoExt+".ass")
+
+	// Ensure output dir exists
+	if err := os.MkdirAll("output", 0755); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to create output dir: " + err.Error()})
+		return
+	}
+
+	if !req.SkipSubtitles {
+		// Always generate transcription if SRT is missing
+		if _, err := os.Stat(srtPath); os.IsNotExist(err) {
+			log.Printf("[%s] Starting audio transcription...\n", baseName)
+			opts := transcription.DefaultOptions()
+			opts.Model = "small"
+			opts.Language = "en"
+			opts.OutputDir = "output"
+
+			transcriptResult, err := transcription.TranscribeAudio(videoPath, opts)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "transcription failed: " + err.Error()})
+				return
+			}
+
+			err = transcriptResult.SaveSegmentsToSRT(srtPath)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to save SRT: " + err.Error()})
+				return
+			}
+		}
+	} else {
+		log.Printf("[%s] Skipping subtitles as requested.\n", baseName)
+		srtPath = ""
+		assPath = ""
+	}
+
+	s.mu.Lock()
+	s.inputVideo = videoPath
+	s.srtPath = srtPath
+	s.assPath = assPath
+	s.previewService = preview.NewPreviewService(videoPath)
+	s.currentTime = 0.0
+	// Initialize default concrete layers based on the loaded preset and new video resolution
+	concreteLayers := actions.NewLayersFromPreset(s.preset, s.inputWidth, s.inputHeight)
+	s.layers = concreteLayers
+	s.mu.Unlock()
+
+	if !req.SkipSubtitles {
+		// Initial subtitle preparation (generates .ass file)
+		subtitleLayer := subtitle.NewSubtitleLayerWithDefaults(srtPath)
+		if err := subtitleLayer.Prepare("output"); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to prepare subtitle layer: " + err.Error()})
+			return
+		}
+	}
+
+	// Re-generate raw frame and preview images
+	if err := s.generateRawFrameFile(); err != nil {
+		log.Printf("Warning: failed to generate raw frame: %v\n", err)
+	}
+	if err := s.generatePreviewFile(); err != nil {
+		log.Printf("Warning: failed to generate preview: %v\n", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "video": videoPath})
+}
+
+func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.mu.Lock()
+	if s.isRendering {
+		s.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "Rendering is already in progress. Please wait."})
+		return
+	}
+	s.isRendering = true
+
+	inputVideo := s.inputVideo
+	presetPath := s.presetPath
+	inputWidth := s.inputWidth
+	inputHeight := s.inputHeight
+	assPath := s.assPath
+	s.mu.Unlock()
+
+	defer func() {
+		s.mu.Lock()
+		s.isRendering = false
+		s.mu.Unlock()
+	}()
+
+	if inputVideo == "" {
+		http.Error(w, "No active project to render", http.StatusBadRequest)
+		return
+	}
+
+	baseName := filepath.Base(inputVideo)
+	finalOutputPath := filepath.Join("output", baseName)
+
+	// Ensure output directory exists
+	if err := os.MkdirAll("output", 0755); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to create output directory: " + err.Error()})
+		return
+	}
+
+	p, err := preset.Load(presetPath)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to load preset: " + err.Error()})
+		return
+	}
+
+	concreteLayers := actions.NewLayersFromPreset(p, inputWidth, inputHeight)
+	inputArgs, activeLayers := actions.BuildRenderingGraph(concreteLayers, inputVideo)
+
+	activeASSPath := ""
+	if assPath != "" {
+		if _, err := os.Stat(assPath); err == nil {
+			activeASSPath = assPath
+		}
+	}
+
+	graph := ffmpeg.BuildFilterGraph(activeLayers, activeASSPath)
+
+	log.Printf("[%s] Web API starting video rendering to: %s\n", baseName, finalOutputPath)
+	err = renderer.Render(inputArgs, finalOutputPath, graph)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "rendering failed: " + err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "output": finalOutputPath})
+}
+
+func (s *Server) downloadVideo(youtubeURL string) (string, error) {
+	cookiesPath := `C:\Users\s\downloads\cookies.txt`
+	downloadedFile := getYTFilename(youtubeURL, cookiesPath)
+	if downloadedFile != "" && fileExists(downloadedFile) {
+		log.Printf("Video is already downloaded: %s. Skipping download.\n", downloadedFile)
+		return downloadedFile, nil
+	}
+
+	log.Printf("Downloading video from URL: %s\n", youtubeURL)
+
+	if err := os.MkdirAll("videos", 0755); err != nil {
+		return "", fmt.Errorf("failed to create videos directory: %w", err)
+	}
+
+	var downloadSuccess bool
+	var lastErr error
+
+	// Attempt 1: Static cookies file if it exists
+	if fileExists(cookiesPath) {
+		cmd := exec.Command("yt-dlp",
+			"--cookies", cookiesPath,
+			"--js-runtimes", "node",
+			"-f", "299+140",
+			"--merge-output-format", "mp4",
+			"-o", "videos/%(title)s.%(ext)s",
+			youtubeURL,
+		)
+		log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+		if err := cmd.Run(); err == nil {
+			downloadSuccess = true
+		} else {
+			log.Printf("Download with static cookies failed: %v\n", err)
+			lastErr = err
+		}
+	}
+
+	// Attempt 2: Fallback to chrome cookies
+	if !downloadSuccess {
+		cmd := exec.Command("yt-dlp",
+			"--cookies-from-browser", "chrome",
+			"--js-runtimes", "node",
+			"-f", "299+140",
+			"--merge-output-format", "mp4",
+			"-o", "videos/%(title)s.%(ext)s",
+			youtubeURL,
+		)
+		log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+		if err := cmd.Run(); err == nil {
+			downloadSuccess = true
+		} else {
+			log.Printf("Download with chrome cookies failed: %v\n", err)
+			lastErr = err
+		}
+	}
+
+	// Attempt 3: Fallback to edge cookies
+	if !downloadSuccess {
+		cmd := exec.Command("yt-dlp",
+			"--cookies-from-browser", "edge",
+			"--js-runtimes", "node",
+			"-f", "299+140",
+			"--merge-output-format", "mp4",
+			"-o", "videos/%(title)s.%(ext)s",
+			youtubeURL,
+		)
+		log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+		if err := cmd.Run(); err == nil {
+			downloadSuccess = true
+		} else {
+			log.Printf("Download with edge cookies failed: %v\n", err)
+			lastErr = err
+		}
+	}
+
+	// Attempt 4: Fallback to no cookies
+	if !downloadSuccess {
+		cmd := exec.Command("yt-dlp",
+			"--js-runtimes", "node",
+			"-f", "299+140",
+			"--merge-output-format", "mp4",
+			"-o", "videos/%(title)s.%(ext)s",
+			youtubeURL,
+		)
+		log.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
+		if err := cmd.Run(); err == nil {
+			downloadSuccess = true
+		} else {
+			log.Printf("Download with no cookies failed: %v\n", err)
+			lastErr = err
+		}
+	}
+
+	if !downloadSuccess {
+		return "", fmt.Errorf("all download attempts failed, last error: %w", lastErr)
+	}
+
+	downloadedFile = findNewestVideo("videos")
+	if downloadedFile == "" {
+		return "", fmt.Errorf("could not find downloaded video file in videos directory")
+	}
+
+	return downloadedFile, nil
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func findNewestVideo(dir string) string {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+
+	var newestFile string
+	var newestTime os.FileInfo
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(file.Name()))
+		if ext == ".mp4" || ext == ".mov" || ext == ".mkv" || ext == ".avi" {
+			info, err := file.Info()
+			if err != nil {
+				continue
+			}
+			if newestTime == nil || info.ModTime().After(newestTime.ModTime()) {
+				newestTime = info
+				newestFile = filepath.Join(dir, file.Name())
+			}
+		}
+	}
+	return newestFile
+}
+
+func getYTFilename(youtubeURL string, cookiesPath string) string {
+	if fileExists(cookiesPath) {
+		cmd := exec.Command("yt-dlp",
+			"--cookies", cookiesPath,
+			"--js-runtimes", "node",
+			"-f", "299+140",
+			"--merge-output-format", "mp4",
+			"-o", "videos/%(title)s.%(ext)s",
+			"--get-filename",
+			youtubeURL,
+		)
+		if out, err := cmd.Output(); err == nil {
+			return strings.TrimSpace(string(out))
+		}
+	}
+	cmdChrome := exec.Command("yt-dlp",
+		"--cookies-from-browser", "chrome",
+		"--js-runtimes", "node",
+		"-f", "299+140",
+		"--merge-output-format", "mp4",
+		"-o", "videos/%(title)s.%(ext)s",
+		"--get-filename",
+		youtubeURL,
+	)
+	if out, err := cmdChrome.Output(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	cmdEdge := exec.Command("yt-dlp",
+		"--cookies-from-browser", "edge",
+		"--js-runtimes", "node",
+		"-f", "299+140",
+		"--merge-output-format", "mp4",
+		"-o", "videos/%(title)s.%(ext)s",
+		"--get-filename",
+		youtubeURL,
+	)
+	if out, err := cmdEdge.Output(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	cmdNoCookies := exec.Command("yt-dlp",
+		"--js-runtimes", "node",
+		"-f", "299+140",
+		"--merge-output-format", "mp4",
+		"-o", "videos/%(title)s.%(ext)s",
+		"--get-filename",
+		youtubeURL,
+	)

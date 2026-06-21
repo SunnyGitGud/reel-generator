@@ -14,7 +14,7 @@ Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,1
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:01.37,TikTok,,0,0,0,,{%c&H00B4E7FF&}yeah i mean
-Dialogue: 0,0:00:01.37,0:00:02.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}she's not mogging
+Dialogue: 0,0:00:01.37,0:00:02.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}she's not mocking
 Dialogue: 0,0:00:02.75,0:00:04.13,TikTok,,0,0,0,,{%c&H00B4E7FF&}like what the
 Dialogue: 0,0:00:04.13,0:00:05.51,TikTok,,0,0,0,,{%c&H00B4E7FF&}fuck is this
 Dialogue: 0,0:00:05.51,0:00:06.90,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro what what

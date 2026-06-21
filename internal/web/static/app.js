@@ -120,16 +120,52 @@ const btnZoomOut = document.getElementById('btn-zoom-out');
 const btnZoomFit = document.getElementById('btn-zoom-fit');
 
 // Initialize editor on load
-window.addEventListener('DOMContentLoaded', () => {
-    fetchLayout();
-    fetchSubtitles();
-    fetchTimeline();
+window.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupSubtitleTabs();
     setupAlignmentGrid();
     setupSubtitleStyleListeners();
     if (btnAddCaption) {
         btnAddCaption.addEventListener('click', addNewSubtitleItem);
+    }
+
+    // Bind front page elements
+    const btnCreateProject = document.getElementById('btn-create-project');
+    if (btnCreateProject) {
+        btnCreateProject.addEventListener('click', handleCreateProject);
+    }
+    const btnRenderVideo = document.getElementById('btn-render-video');
+    if (btnRenderVideo) {
+        btnRenderVideo.addEventListener('click', handleRenderVideo);
+    }
+    const selectPresetLayout = document.getElementById('select-preset-layout');
+    if (selectPresetLayout) {
+        selectPresetLayout.addEventListener('change', handleLoadPresetLayout);
+    }
+
+    // Check project status on load
+    try {
+        const response = await fetch('/api/project/status');
+        const data = await response.json();
+        if (data.active) {
+            document.getElementById('front-page').style.display = 'none';
+            document.getElementById('editor-container').style.display = 'flex';
+            fetchLayout();
+            fetchSubtitles();
+            fetchTimeline();
+            fetchPresetLayouts();
+        } else {
+            document.getElementById('front-page').style.display = 'flex';
+            document.getElementById('editor-container').style.display = 'none';
+            // Prefill URL if available
+            if (data.cli_url) {
+                document.getElementById('yt-url-input').value = data.cli_url;
+            }
+        }
+    } catch (err) {
+        console.error('Error checking project status:', err);
+        document.getElementById('front-page').style.display = 'flex';
+        document.getElementById('editor-container').style.display = 'none';
     }
 });
 
@@ -881,29 +917,8 @@ function setupEventListeners() {
     });
     
     // Action buttons
-    btnRefreshPreview.addEventListener('click', async () => {
-        try {
-            btnRefreshPreview.disabled = true;
-            btnRefreshPreview.textContent = 'Generating...';
-            
-            const response = await fetch('/api/layout/preview?time=' + state.currentTime, {
-                method: 'POST'
-            });
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                refreshPreviewSrc();
-                setPreviewMode(true); // Show composite preview once loaded
-            } else {
-                alert('Failed to regenerate preview: ' + data.error);
-            }
-        } catch (err) {
-            console.error('Error generating preview:', err);
-            alert('Failed to generate preview. Server error.');
-        } finally {
-            btnRefreshPreview.disabled = false;
-            btnRefreshPreview.innerHTML = '<span class="btn-icon">🔄</span> Refresh Preview';
-        }
+    btnRefreshPreview.addEventListener('click', () => {
+        triggerPreviewRefresh(false);
     });
     
     btnSaveLayout.addEventListener('click', async () => {
@@ -1395,6 +1410,24 @@ function selectSubtitleCard(index) {
         }
     });
     updateCanvasSubtitlePreview();
+
+    // Jump to the subtitle's start frame on selection
+    if (index >= 0 && index < subtitleState.subtitles.length) {
+        const sub = subtitleState.subtitles[index];
+        state.currentTime = sub.start;
+        updateTimelineUI();
+
+        // Update canvas layer frames with the frame at seeked position
+        document.querySelectorAll('.layer-frame img').forEach(img => {
+            if (img.src.includes('/api/raw-frame.png')) {
+                img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
+            }
+        });
+        setPreviewMode(false);
+
+        // Automatically refresh the preview frame at this timestamp
+        triggerPreviewRefresh(true);
+    }
 }
 
 function addNewSubtitleItem() {
@@ -1490,6 +1523,36 @@ function setupSubtitleStyleListeners() {
     });
 }
 
+async function triggerPreviewRefresh(silent = false) {
+    try {
+        if (btnRefreshPreview) {
+            btnRefreshPreview.disabled = true;
+            btnRefreshPreview.textContent = 'Generating...';
+        }
+        
+        const response = await fetch('/api/layout/preview?time=' + state.currentTime, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            refreshPreviewSrc();
+            setPreviewMode(true);
+        } else {
+            if (!silent) alert('Failed to regenerate preview: ' + data.error);
+            else console.error('Failed to regenerate preview:', data.error);
+        }
+    } catch (err) {
+        console.error('Error generating preview:', err);
+        if (!silent) alert('Failed to generate preview. Server error.');
+    } finally {
+        if (btnRefreshPreview) {
+            btnRefreshPreview.disabled = false;
+            btnRefreshPreview.innerHTML = '<span class="btn-icon">🔄</span> Refresh Preview';
+        }
+    }
+}
+
 // Timeline logic
 async function fetchTimeline() {
     if (!timelineTrack) return;
@@ -1571,4 +1634,169 @@ function setupTimelineScrubbing() {
     window.addEventListener('mouseup', () => {
         isScrubbing = false;
     });
+}
+
+async function handleCreateProject() {
+    const input = document.getElementById('yt-url-input');
+    const url = input.value.trim();
+    if (!url) {
+        alert('Please paste a YouTube URL.');
+        return;
+    }
+
+    const chkSubtitles = document.getElementById('chk-render-subtitles');
+    const includeSubtitles = chkSubtitles ? chkSubtitles.checked : true;
+
+    const btn = document.getElementById('btn-create-project');
+    const overlay = document.getElementById('loading-overlay');
+    const status = document.getElementById('loading-status');
+
+    try {
+        btn.disabled = true;
+        input.disabled = true;
+        if (chkSubtitles) chkSubtitles.disabled = true;
+        overlay.style.display = 'flex';
+        status.textContent = 'Downloading video from YouTube (this might take a moment)...';
+
+        const response = await fetch('/api/project/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                url: url,
+                skip_subtitles: !includeSubtitles
+            })
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            status.textContent = 'Project initialized! Loading editor...';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                document.getElementById('front-page').style.display = 'none';
+                document.getElementById('editor-container').style.display = 'flex';
+                
+                fetchLayout();
+                fetchSubtitles();
+                fetchTimeline();
+                fetchPresetLayouts();
+                
+                btn.disabled = false;
+                input.disabled = false;
+                if (chkSubtitles) {
+                    chkSubtitles.disabled = false;
+                    chkSubtitles.checked = true;
+                }
+                input.value = '';
+            }, 1000);
+        } else {
+            alert('Failed to create project: ' + data.error);
+            overlay.style.display = 'none';
+            btn.disabled = false;
+            input.disabled = false;
+            if (chkSubtitles) chkSubtitles.disabled = false;
+        }
+    } catch (err) {
+        console.error('Error creating project:', err);
+        alert('An error occurred during project setup.');
+        overlay.style.display = 'none';
+        btn.disabled = false;
+        input.disabled = false;
+        if (chkSubtitles) chkSubtitles.disabled = false;
+    }
+}
+
+async function handleRenderVideo() {
+    const btn = document.getElementById('btn-render-video');
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-icon">⏳</span> Rendering...';
+        statusBadge.textContent = 'Rendering...';
+        statusBadge.classList.add('saving');
+        showToast('Video rendering started in background...');
+
+        const response = await fetch('/api/project/render', {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Video rendered successfully! Saved to output folder.');
+            alert('Video rendered successfully!\nSaved to: ' + data.output);
+        } else {
+            alert('Rendering failed: ' + data.error);
+        }
+    } catch (err) {
+        console.error('Error rendering video:', err);
+        alert('Rendering failed. Server error.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">🎬</span> Render Video';
+        statusBadge.textContent = 'Connected';
+        statusBadge.classList.remove('saving');
+    }
+}
+
+async function fetchPresetLayouts() {
+    const selectPresetLayout = document.getElementById('select-preset-layout');
+    if (!selectPresetLayout) return;
+
+    try {
+        const response = await fetch('/api/layouts');
+        const layouts = await response.json();
+
+        selectPresetLayout.innerHTML = '<option value="">Load Layout...</option>';
+        layouts.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            let displayName = name.replace('.json', '');
+            displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+            opt.textContent = displayName;
+            selectPresetLayout.appendChild(opt);
+        });
+    } catch (err) {
+        console.error('Failed to fetch layout templates:', err);
+    }
+}
+
+async function handleLoadPresetLayout(e) {
+    const name = e.target.value;
+    if (!name) return;
+
+    if (!confirm(`Are you sure you want to load layout "${name}"? This will overwrite your current layer placements.`)) {
+        e.target.value = '';
+        return;
+    }
+
+    try {
+        statusBadge.textContent = 'Loading Layout...';
+        statusBadge.classList.add('saving');
+
+        const response = await fetch('/api/layout/load', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name })
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast(`Applied layout: ${name}`);
+            await fetchLayout();
+            
+            document.querySelectorAll('.layer-frame img').forEach(img => {
+                if (img.src.includes('/api/raw-frame.png')) {
+                    img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
+                }
+            });
+            setPreviewMode(false);
+        } else {
+            alert('Failed to load layout template: ' + data.error);
+        }
+    } catch (err) {
+        console.error('Error loading layout template:', err);
+        alert('Failed to apply layout. Server error.');
+    } finally {
+        e.target.value = '';
+        statusBadge.textContent = 'Connected';
+        statusBadge.classList.remove('saving');
+    }
 }
