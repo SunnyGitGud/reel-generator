@@ -182,7 +182,7 @@
         <main class="workspace">
             <!-- Toolbar -->
             <header class="toolbar">
-                <div class="zoom-controls">
+                <div class="zoom-controls" id="zoom-controls-group">
                     <button id="btn-zoom-out" class="zoom-btn">—</button>
                     <span class="zoom-level" id="zoom-label">50%</span>
                     <button id="btn-zoom-in" class="zoom-btn">+</button>
@@ -195,16 +195,30 @@
                         <option value="">Load Layout...</option>
                     </select>
                 </div>
+                <!-- View mode switcher (centre) -->
+                <div class="view-mode-switcher">
+                    <button class="view-mode-btn active" id="view-mode-editor" data-mode="editor" title="Layout Editor">
+                        ✏️ Editor
+                    </button>
+                    <button class="view-mode-btn" id="view-mode-source" data-mode="source" title="Play Source Video">
+                        ▶ Source
+                    </button>
+                    <button class="view-mode-btn" id="view-mode-output" data-mode="output" title="Play Rendered Video">
+                        🎬 Rendered
+                    </button>
+                    <button class="view-mode-btn" id="view-mode-compare" data-mode="compare" title="Side-by-side Comparison">
+                        ⧉ Compare
+                    </button>
+                </div>
                 <div class="toolbar-right">
-                    <span style="color: var(--border-color); margin: 0 4px;">|</span>
                     <button id="btn-new-video" class="btn btn-secondary" style="font-size: 0.8rem; padding: 5px 12px;" title="Load a different YouTube video">
                         <span class="btn-icon">📂</span> New Video
                     </button>
-                    <span style="color: var(--border-color); margin: 0 4px; font-size: 0.75rem; color: var(--text-muted);">Nudge: Arrow Keys (Shift=10px)</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Nudge: Arrow Keys (Shift=10px)</span>
                 </div>
             </header>
 
-            <!-- Canvas Container -->
+            <!-- Canvas Container (Editor mode) -->
             <div class="canvas-viewport" id="canvas-viewport">
                 <div class="canvas-container" id="canvas-container">
                     <div class="canvas-bg"></div>
@@ -216,8 +230,44 @@
                 </div>
             </div>
 
+            <!-- Video Player Panel (Source / Rendered / Compare modes) -->
+            <div class="video-panel" id="video-panel" style="display:none;">
+                <div class="video-stage" id="video-stage">
+                    <!-- Source video slot -->
+                    <div class="video-slot" id="video-slot-source">
+                        <div class="video-slot-label">Source Video</div>
+                        <video id="vid-source" preload="metadata">
+                            <source src="/api/video/source" type="video/mp4">
+                        </video>
+                    </div>
+                    <!-- Rendered video slot -->
+                    <div class="video-slot" id="video-slot-output" style="display:none;">
+                        <div class="video-slot-label">Rendered Output</div>
+                        <video id="vid-output" preload="metadata">
+                            <source src="/api/video/output" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+
+                <!-- Shared video controls bar -->
+                <div class="video-controls" id="video-controls">
+                    <button class="vc-btn" id="vc-playpause" title="Play / Pause">▶</button>
+                    <button class="vc-btn" id="vc-restart" title="Restart">⏮</button>
+                    <div class="vc-progress-wrap">
+                        <div class="vc-progress-bg">
+                            <div class="vc-progress-fill" id="vc-progress-fill"></div>
+                            <input type="range" class="vc-seek" id="vc-seek" min="0" max="1000" value="0" step="1">
+                        </div>
+                    </div>
+                    <span class="vc-time" id="vc-time">0:00 / 0:00</span>
+                    <button class="vc-btn vc-mute" id="vc-mute" title="Mute">🔊</button>
+                    <input type="range" class="vc-volume" id="vc-volume" min="0" max="100" value="80" step="1">
+                    <button class="vc-btn" id="vc-fullscreen" title="Fullscreen">⛶</button>
+                </div>
+            </div>
+
             <!-- Seekable Timeline -->
-            <div class="timeline-section">
+            <div class="timeline-section" id="timeline-section">
                 <div class="timeline-header">
                     <div class="timeline-title">🎬 Video Seek timeline</div>
                     <div class="timeline-info" id="timeline-info">00:00.00 / 00:00.00</div>

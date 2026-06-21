@@ -381,6 +381,179 @@ body {
     gap: 8px;
 }
 
+/* View mode switcher */
+.view-mode-switcher {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.view-mode-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-family: var(--font-family);
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    outline: none;
+}
+
+.view-mode-btn:hover {
+    background: rgba(255,255,255,0.07);
+    color: var(--text-main);
+}
+
+.view-mode-btn.active {
+    background: var(--color-accent);
+    color: #fff;
+}
+
+/* Video Player Panel */
+.video-panel {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background: #050810;
+    overflow: hidden;
+}
+
+.video-stage {
+    flex-grow: 1;
+    display: flex;
+    gap: 2px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.video-slot {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+}
+
+.video-slot-label {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    z-index: 5;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    background: rgba(0,0,0,0.5);
+    padding: 3px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.video-slot video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Custom video controls */
+.video-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.vc-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.15s;
+    outline: none;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vc-btn:hover {
+    background: rgba(255,255,255,0.12);
+}
+
+.vc-progress-wrap {
+    flex-grow: 1;
+    position: relative;
+    height: 34px;
+    display: flex;
+    align-items: center;
+}
+
+.vc-progress-bg {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 4px;
+    overflow: visible;
+}
+
+.vc-progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: var(--color-accent);
+    border-radius: 4px;
+    pointer-events: none;
+    transition: width 0.05s linear;
+}
+
+.vc-seek {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+}
+
+.vc-time {
+    font-size: 0.8rem;
+    font-family: monospace;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.vc-volume {
+    width: 80px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--color-accent);
+}
+
 /* Canvas Viewport */
 .canvas-viewport {
     flex-grow: 1;

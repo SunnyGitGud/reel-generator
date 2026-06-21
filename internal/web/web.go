@@ -174,6 +174,8 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/preview.png", s.handleServePreviewImage)
 	mux.HandleFunc("/api/raw-frame.png", s.handleServeRawFrameImage)
 	mux.HandleFunc("/api/overlay-image", s.handleServeOverlayImage)
+	mux.HandleFunc("/api/video/source", s.handleServeSourceVideo)
+	mux.HandleFunc("/api/video/output", s.handleServeOutputVideo)
 
 	s.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -596,6 +598,44 @@ func (s *Server) handleServeOverlayImage(w http.ResponseWriter, r *http.Request)
 	} else {
 		http.Error(w, "No overlay image configured", http.StatusNotFound)
 	}
+}
+
+// handleServeSourceVideo streams the original downloaded/local video with Range support.
+func (s *Server) handleServeSourceVideo(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	videoPath := s.inputVideo
+	s.mu.Unlock()
+
+	if videoPath == "" {
+		http.Error(w, "no active project", http.StatusNotFound)
+		return
+	}
+	if !fileExists(videoPath) {
+		http.Error(w, "source video file not found on disk", http.StatusNotFound)
+		return
+	}
+	http.ServeFile(w, r, videoPath)
+}
+
+// handleServeOutputVideo streams the rendered output video with Range support.
+func (s *Server) handleServeOutputVideo(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	videoPath := s.inputVideo
+	s.mu.Unlock()
+
+	if videoPath == "" {
+		http.Error(w, "no active project", http.StatusNotFound)
+		return
+	}
+
+	baseName := filepath.Base(videoPath)
+	outputPath := filepath.Join("output", baseName)
+
+	if !fileExists(outputPath) {
+		http.Error(w, "rendered output video not found — render it first", http.StatusNotFound)
+		return
+	}
+	http.ServeFile(w, r, outputPath)
 }
 
 func (s *Server) handleExportLayout(w http.ResponseWriter, r *http.Request) {

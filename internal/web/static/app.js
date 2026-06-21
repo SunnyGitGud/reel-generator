@@ -147,6 +147,12 @@ window.addEventListener('DOMContentLoaded', async () => {
         btnNewVideo.addEventListener('click', handleNewVideo);
     }
 
+    // Bind view mode switcher buttons
+    document.querySelectorAll('.view-mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchViewMode(btn.dataset.mode));
+    });
+    setupVideoPlayer();
+
     // Check project status on load
     try {
         const response = await fetch('/api/project/status');
@@ -1839,4 +1845,201 @@ async function handleLoadPresetLayout(e) {
         statusBadge.textContent = 'Connected';
         statusBadge.classList.remove('saving');
     }
+}
+
+// ============================================================
+// VIDEO PLAYER MODULE
+// ============================================================
+
+let currentViewMode = 'editor'; // 'editor' | 'source' | 'output' | 'compare'
+let vcIsSeeking = false;
+let vcAnimFrame = null;
+
+function switchViewMode(mode) {
+    currentViewMode = mode;
+
+    // Update active button
+    document.querySelectorAll('.view-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    const canvasViewport  = document.getElementById('canvas-viewport');
+    const videoPanel      = document.getElementById('video-panel');
+    const timelineSection = document.getElementById('timeline-section');
+    const vidSource       = document.getElementById('vid-source');
+    const vidOutput       = document.getElementById('vid-output');
+    const slotSource      = document.getElementById('video-slot-source');
+    const slotOutput      = document.getElementById('video-slot-output');
+
+    // Pause both videos when switching
+    if (vidSource) vidSource.pause();
+    if (vidOutput) vidOutput.pause();
+    vcUpdatePlayBtn(false);
+
+    if (mode === 'editor') {
+        canvasViewport.style.display  = '';
+        videoPanel.style.display      = 'none';
+        timelineSection.style.display = '';
+    } else {
+        canvasViewport.style.display  = 'none';
+        videoPanel.style.display      = 'flex';
+        timelineSection.style.display = 'none';
+
+        if (mode === 'source') {
+            slotSource.style.display = '';
+            slotOutput.style.display = 'none';
+            vcSetPrimaryVideo(vidSource);
+        } else if (mode === 'output') {
+            slotSource.style.display = 'none';
+            slotOutput.style.display = '';
+            vcSetPrimaryVideo(vidOutput);
+        } else if (mode === 'compare') {
+            slotSource.style.display = '';
+            slotOutput.style.display = '';
+            vcSetPrimaryVideo(vidSource); // source drives controls; output syncs
+        }
+
+        // Load videos lazily
+        if ((mode === 'source' || mode === 'compare') && vidSource && vidSource.readyState === 0) vidSource.load();
+        if ((mode === 'output' || mode === 'compare') && vidOutput && vidOutput.readyState === 0) vidOutput.load();
+    }
+
+    cancelAnimationFrame(vcAnimFrame);
+    if (mode !== 'editor') vcTick();
+}
+
+let vcPrimaryVideo = null;
+
+function vcSetPrimaryVideo(vid) {
+    vcPrimaryVideo = vid;
+    const seek = document.getElementById('vc-seek');
+    if (seek) seek.value = 0;
+    const fill = document.getElementById('vc-progress-fill');
+    if (fill) fill.style.width = '0%';
+    vcUpdateTime(0, vid ? vid.duration || 0 : 0);
+}
+
+function vcTick() {
+    if (!vcPrimaryVideo || vcIsSeeking) {
+        vcAnimFrame = requestAnimationFrame(vcTick);
+        return;
+    }
+    const cur = vcPrimaryVideo.currentTime;
+    const dur = vcPrimaryVideo.duration || 0;
+    const pct = dur > 0 ? (cur / dur) * 100 : 0;
+
+    const seek = document.getElementById('vc-seek');
+    const fill = document.getElementById('vc-progress-fill');
+    if (seek) seek.value = pct * 10; // max is 1000
+    if (fill) fill.style.width = pct + '%';
+    vcUpdateTime(cur, dur);
+
+    // Sync output video in compare mode
+    if (currentViewMode === 'compare') {
+        const vidOut = document.getElementById('vid-output');
+        if (vidOut && Math.abs(vidOut.currentTime - cur) > 0.3) {
+            vidOut.currentTime = cur;
+        }
+    }
+
+    vcAnimFrame = requestAnimationFrame(vcTick);
+}
+
+function vcUpdateTime(cur, dur) {
+    const fmt = s => {
+        const m   = Math.floor(s / 60);
+        const sec = Math.floor(s % 60).toString().padStart(2, '0');
+        return `${m}:${sec}`;
+    };
+    const el = document.getElementById('vc-time');
+    if (el) el.textContent = `${fmt(cur)} / ${fmt(dur || 0)}`;
+}
+
+function vcUpdatePlayBtn(playing) {
+    const btn = document.getElementById('vc-playpause');
+    if (btn) btn.textContent = playing ? '⏸' : '▶';
+}
+
+function setupVideoPlayer() {
+    const vidSource  = document.getElementById('vid-source');
+    const vidOutput  = document.getElementById('vid-output');
+    const btnPlay    = document.getElementById('vc-playpause');
+    const btnRestart = document.getElementById('vc-restart');
+    const seekInput  = document.getElementById('vc-seek');
+    const muteBtn    = document.getElementById('vc-mute');
+    const volInput   = document.getElementById('vc-volume');
+    const fsBtn      = document.getElementById('vc-fullscreen');
+
+    if (!vidSource) return;
+
+    // Set initial volume
+    [vidSource, vidOutput].forEach(v => { if (v) v.volume = 0.8; });
+
+    // Play / Pause
+    btnPlay && btnPlay.addEventListener('click', () => {
+        if (!vcPrimaryVideo) return;
+        if (vcPrimaryVideo.paused) {
+            vcPrimaryVideo.play();
+            if (currentViewMode === 'compare' && vidOutput) vidOutput.play();
+            vcUpdatePlayBtn(true);
+        } else {
+            vcPrimaryVideo.pause();
+            if (currentViewMode === 'compare' && vidOutput) vidOutput.pause();
+            vcUpdatePlayBtn(false);
+        }
+    });
+
+    // Restart
+    btnRestart && btnRestart.addEventListener('click', () => {
+        if (!vcPrimaryVideo) return;
+        vcPrimaryVideo.currentTime = 0;
+        if (currentViewMode === 'compare' && vidOutput) vidOutput.currentTime = 0;
+    });
+
+    // Seek — mousedown locks tick updates
+    seekInput && seekInput.addEventListener('mousedown', () => { vcIsSeeking = true; });
+    seekInput && seekInput.addEventListener('input', () => {
+        if (!vcPrimaryVideo || !vcPrimaryVideo.duration) return;
+        const pct = seekInput.value / 1000;
+        const fill = document.getElementById('vc-progress-fill');
+        if (fill) fill.style.width = (pct * 100) + '%';
+        vcUpdateTime(vcPrimaryVideo.duration * pct, vcPrimaryVideo.duration);
+    });
+    seekInput && seekInput.addEventListener('change', () => {
+        if (!vcPrimaryVideo || !vcPrimaryVideo.duration) return;
+        const t = (seekInput.value / 1000) * vcPrimaryVideo.duration;
+        vcPrimaryVideo.currentTime = t;
+        if (currentViewMode === 'compare' && vidOutput) vidOutput.currentTime = t;
+        vcIsSeeking = false;
+    });
+
+    // Mute toggle
+    muteBtn && muteBtn.addEventListener('click', () => {
+        const muted = !vcPrimaryVideo.muted;
+        [vidSource, vidOutput].forEach(v => { if (v) v.muted = muted; });
+        muteBtn.textContent = muted ? '🔇' : '🔊';
+    });
+
+    // Volume slider
+    volInput && volInput.addEventListener('input', () => {
+        const vol = volInput.value / 100;
+        [vidSource, vidOutput].forEach(v => { if (v) v.volume = vol; });
+    });
+
+    // Fullscreen on the whole video panel
+    fsBtn && fsBtn.addEventListener('click', () => {
+        const panel = document.getElementById('video-panel');
+        if (!panel) return;
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            panel.requestFullscreen();
+        }
+    });
+
+    // Ended events
+    [vidSource, vidOutput].forEach(v => {
+        if (!v) return;
+        v.addEventListener('ended', () => vcUpdatePlayBtn(false));
+    });
 }
