@@ -1481,3 +1481,103 @@ func getYTFilename(youtubeURL string, cookiesPath string) string {
 		"--get-filename",
 		youtubeURL,
 	)
+	if out, err := cmdNoCookies.Output(); err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	return ""
+}
+
+// handleListLayouts returns a JSON array of layout filenames found in the layouts/ directory.
+func (s *Server) handleListLayouts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	entries, err := os.ReadDir("layouts")
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No layouts directory yet – return empty list
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.ToLower(filepath.Ext(e.Name())) == ".json" {
+			names = append(names, e.Name())
+		}
+	}
+	if names == nil {
+		names = []string{}
+	}
+	json.NewEncoder(w).Encode(names)
+}
+
+type LoadLayoutRequest struct {
+	Name string `json:"name"`
+}
+
+// handleLoadLayout reads a saved preset from the layouts/ directory, applies it in-memory,
+// and regenerates the preview.
+func (s *Server) handleLoadLayout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req LoadLayoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	// Sanitize: prevent directory traversal
+	name = filepath.Base(name)
+	if !strings.HasSuffix(strings.ToLower(name), ".json") {
+		name += ".json"
+	}
+
+	layoutPath := filepath.Join("layouts", name)
+	if !fileExists(layoutPath) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "layout not found: " + name})
+		return
+	}
+
+	p, err := preset.Load(layoutPath)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to load layout: " + err.Error()})
+		return
+	}
+
+	s.mu.Lock()
+	s.preset = p
+	s.layers = actions.NewLayersFromPreset(p, s.inputWidth, s.inputHeight)
+	s.mu.Unlock()
+
+	// Regenerate preview to reflect the new layout
+	if err := s.generatePreviewFile(); err != nil {
+		log.Printf("Warning: failed to regenerate preview after loading layout: %v\n", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
