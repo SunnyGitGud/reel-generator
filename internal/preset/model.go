@@ -6,9 +6,18 @@ type Crop struct {
 }
 
 type Overlay struct {
-	Image string `json:"image"`
-	X     int    `json:"x"`
-	Y     int    `json:"y"`
+	Image             string  `json:"image"`
+	X                 int     `json:"x"`
+	Y                 int     `json:"y"`
+	Width             int     `json:"width,omitempty"`
+	Height            int     `json:"height,omitempty"`
+	Visible           *bool   `json:"visible,omitempty"`
+	ZIndex            int     `json:"z_index,omitempty"`
+	ScaleMode         string  `json:"scale_mode,omitempty"`
+	CropXPercent      float64 `json:"crop_x_percent,omitempty"`
+	CropYPercent      float64 `json:"crop_y_percent,omitempty"`
+	CropWidthPercent  float64 `json:"crop_width_percent,omitempty"`
+	CropHeightPercent float64 `json:"crop_height_percent,omitempty"`
 }
 
 type LayerConfig struct {
@@ -20,6 +29,9 @@ type LayerConfig struct {
 	CropYPercent      float64 `json:"crop_y_percent"`
 	CropWidthPercent  float64 `json:"crop_width_percent"`
 	CropHeightPercent float64 `json:"crop_height_percent"`
+	Visible           *bool   `json:"visible,omitempty"`
+	ZIndex            int     `json:"z_index,omitempty"`
+	ScaleMode         string  `json:"scale_mode,omitempty"`
 }
 
 type Preset struct {

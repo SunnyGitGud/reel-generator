@@ -11,9 +11,11 @@ import (
 
 	"github.com/yourname/video-editor/internal/actions"
 	"github.com/yourname/video-editor/internal/ffmpeg"
+	"github.com/yourname/video-editor/internal/preset"
 	"github.com/yourname/video-editor/internal/renderer"
 	"github.com/yourname/video-editor/internal/subtitle"
 	"github.com/yourname/video-editor/internal/transcription"
+	"github.com/yourname/video-editor/internal/web"
 )
 
 func main() {
@@ -312,19 +314,53 @@ func main() {
 			}
 		}
 
-		// --- Video Rendering with Subtitles ---
-		concreteLayers := actions.NewLayersWithDimensions(inputWidth, inputHeight)
+		// --- Visual Layout Editing Option ---
+		presetPath := "presets/shorts.json"
+		fmt.Print("Do you want to edit the layout visually in the browser? (y/n): ")
+		var editResponse string
+		fmt.Scanln(&editResponse)
+		editResponse = strings.TrimSpace(strings.ToLower(editResponse))
+		if editResponse == "y" || editResponse == "yes" {
+			srv, err := web.NewServer(presetPath, videoInputPath, inputWidth, inputHeight, "output/preview.png")
+			if err != nil {
+				log.Fatalf("Failed to initialize Layout Editor server: %v", err)
+			}
+			if err := srv.Start(8080); err != nil {
+				log.Fatalf("Failed to start Layout Editor server: %v", err)
+			}
 
-		layers := make([]ffmpeg.RenderLayer, len(concreteLayers))
-		for i, layer := range concreteLayers {
-			layers[i] = layer
+			fmt.Println("\n==================================================")
+			fmt.Println("  Visual Layout Editor is running at:")
+			fmt.Println("  http://localhost:8080")
+			fmt.Println("==================================================")
+			fmt.Println("  1. Open the URL in your browser.")
+			fmt.Println("  2. Interactively adjust your layers.")
+			fmt.Println("  3. Click 'Save Layout' in the UI when finished.")
+			fmt.Println("  4. Press ENTER in this terminal to render the video...")
+			fmt.Println("==================================================")
+
+			// Wait for user to press enter
+			var enterResp string
+			fmt.Scanln(&enterResp)
+
+			srv.Stop()
 		}
 
-		graph := ffmpeg.BuildFilterGraph(layers, assFileToUse)
+		// Load/Reload the layout configurations from preset to be sure we have the latest
+		p, err := preset.Load(presetPath)
+		if err != nil {
+			log.Fatalf("Failed to load preset %s: %v", presetPath, err)
+		}
+		concreteLayers := actions.NewLayersFromPreset(p, inputWidth, inputHeight)
+
+		// Build dynamic input files list and map overlay layers
+		inputArgs, activeLayers := actions.BuildRenderingGraph(concreteLayers, videoInputPath)
+
+		graph := ffmpeg.BuildFilterGraph(activeLayers, assFileToUse)
 
 		log.Printf("[%s] Starting video rendering...\n", baseName)
 		err = renderer.Render(
-			videoInputPath,
+			inputArgs,
 			finalOutputPath,
 			graph,
 		)

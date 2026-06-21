@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Videdit - Visual Layout Editor</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-accent">⚡</span>
+                    <h2>Videdit Layout</h2>
+                </div>
+                <div class="status-badge" id="status-badge">Connected</div>
+            </div>
+
+            <!-- Resolution Section -->
+            <div class="panel-section">
+                <h3>Resolution</h3>
+                <div class="resolution-display">
+                    <span id="canvas-resolution">1080 × 1920</span>
+                </div>
+            </div>
+
+            <!-- Layers Panel -->
+            <div class="panel-section flex-grow">
+                <div class="section-title-row">
+                    <h3>Layers</h3>
+                </div>
+                <div class="layer-list" id="layer-list">
+                    <!-- Dynamic Layer List Items -->
+                </div>
+            </div>
+
+            <!-- Transform Panel -->
+            <div class="panel-section" id="transform-panel" style="display: none;">
+                <h3>Transform (<span id="selected-layer-name">none</span>)</h3>
+                <div class="transform-grid">
+                    <div class="input-group">
+                        <label for="pos-x">X</label>
+                        <input type="number" id="pos-x" name="x">
+                    </div>
+                    <div class="input-group">
+                        <label for="pos-y">Y</label>
+                        <input type="number" id="pos-y" name="y">
+                    </div>
+                    <div class="input-group">
+                        <label for="dim-w">Width</label>
+                        <input type="number" id="dim-w" name="width">
+                    </div>
+                    <div class="input-group">
+                        <label for="dim-h">Height</label>
+                        <input type="number" id="dim-h" name="height">
+                    </div>
+                </div>
+                <div class="z-index-row">
+                    <label for="layer-zindex">Z-Index</label>
+                    <input type="number" id="layer-zindex" name="zindex" min="0" max="99">
+                </div>
+                <div class="z-index-row" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <label for="layer-scalemode" style="font-size: 0.8rem; color: var(--text-muted);">Scale Mode</label>
+                    <select id="layer-scalemode" name="scalemode" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; font-size: 0.875rem; width: 120px;">
+                        <option value="stretch">Stretch</option>
+                        <option value="fit">Fit (Contain)</option>
+                        <option value="fill">Fill (Cover)</option>
+                    </select>
+                </div>
+                <div class="z-index-row" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <label for="layer-lock-ar" style="font-size: 0.8rem; color: var(--text-muted);">Lock Aspect Ratio</label>
+                    <input type="checkbox" id="layer-lock-ar" name="lock_ar" style="width: 18px; height: 18px; cursor: pointer;">
+                </div>
+                
+                <!-- Crop Settings Subpanel -->
+                <div id="crop-panel" style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">Crop Settings</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                <label for="crop-x">Crop X</label>
+                                <span id="crop-x-val">0%</span>
+                            </div>
+                            <input type="range" id="crop-x" min="0" max="100" value="0" style="width: 100%;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                <label for="crop-y">Crop Y</label>
+                                <span id="crop-y-val">0%</span>
+                            </div>
+                            <input type="range" id="crop-y" min="0" max="100" value="0" style="width: 100%;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                <label for="crop-w">Crop Width</label>
+                                <span id="crop-w-val">100%</span>
+                            </div>
+                            <input type="range" id="crop-w" min="0" max="100" value="100" style="width: 100%;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                <label for="crop-h">Crop Height</label>
+                                <span id="crop-h-val">100%</span>
+                            </div>
+                            <input type="range" id="crop-h" min="0" max="100" value="100" style="width: 100%;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="sidebar-actions">
+                <button id="btn-refresh-preview" class="btn btn-secondary">
+                    <span class="btn-icon">🔄</span>
+                    Refresh Preview
+                </button>
+                <button id="btn-save-layout" class="btn btn-primary">
+                    <span class="btn-icon">💾</span>
+                    Save Layout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <!-- Toolbar -->
+            <header class="toolbar">
+                <div class="zoom-controls">
+                    <button id="btn-zoom-out" class="zoom-btn">—</button>
+                    <span class="zoom-level" id="zoom-label">50%</span>
+                    <button id="btn-zoom-in" class="zoom-btn">+</button>
+                    <button id="btn-zoom-fit" class="btn-text">Fit Screen</button>
+                    <span style="color: var(--border-color); margin: 0 4px;">|</span>
+                    <button id="btn-undo" class="zoom-btn" title="Undo (Ctrl+Z)">↶</button>
+                    <button id="btn-redo" class="zoom-btn" title="Redo (Ctrl+Y)">↷</button>
+                </div>
+                <div class="hint-text">
+                    Nudge with Arrow Keys (Shift for 10px)
+                </div>
+            </header>
+
+            <!-- Canvas Container -->
+            <div class="canvas-viewport" id="canvas-viewport">
+                <div class="canvas-container" id="canvas-container">
+                    <div class="canvas-bg"></div>
+                    <img id="preview-image" src="" alt="Composition Preview">
+                    <div class="layer-overlay-container" id="layer-overlay-container">
+                        <!-- Absolute positioned layers for editing -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Layout Saved Successfully!</div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

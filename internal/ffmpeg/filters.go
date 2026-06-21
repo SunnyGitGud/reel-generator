@@ -10,11 +10,18 @@ type Filter interface {
 }
 
 type Scale struct {
-	Width  int
-	Height int
+	Width     int
+	Height    int
+	ScaleMode string // "stretch", "fit", "fill"
 }
 
 func (s Scale) Build() string {
+	if s.ScaleMode == "fit" {
+		return fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease", s.Width, s.Height)
+	}
+	if s.ScaleMode == "fill" {
+		return fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", s.Width, s.Height, s.Width, s.Height)
+	}
 	return fmt.Sprintf("scale=%d:%d", s.Width, s.Height)
 }
 

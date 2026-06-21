@@ -35,7 +35,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`Subtitle CLI Tool
+	fmt.Print(`Subtitle CLI Tool
 
 Usage: go run cmd/subtitle/main.go <command> [options]
 

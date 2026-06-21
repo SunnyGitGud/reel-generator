@@ -7,20 +7,21 @@ import (
 )
 
 func Render(
-	input string,
+	inputArgs []string,
 	output string,
 	filterGraph string,
 ) error {
 
-	args := []string{
-		"-i", input,
+	args := []string{}
+	args = append(args, inputArgs...)
+	args = append(args,
 		"-filter_complex", filterGraph,
 		"-c:a", "aac",
 		"-c:v", "libx264",
 		"-preset", "fast",
 		"-y",
 		output,
-	}
+	)
 
 	fmt.Println("ffmpeg", args)
 
