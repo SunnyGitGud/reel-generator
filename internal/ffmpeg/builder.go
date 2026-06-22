@@ -42,7 +42,7 @@ func BuildFilterGraph(layers []RenderLayer, assFilePath string, keepSegments []K
 			finalChain = input
 		}
 
-		if assFilePath != "" {
+		if assFilePath != "" && len(keepSegments) == 0 {
 			finalChain = fmt.Sprintf("%s,%s", finalChain, BurnSubtitlesFilter{ASSFilePath: assFilePath}.Build())
 		}
 
@@ -71,7 +71,7 @@ func BuildFilterGraph(layers []RenderLayer, assFilePath string, keepSegments []K
 
 			var output string
 			if i == len(layers)-1 {
-				if assFilePath != "" {
+				if assFilePath != "" && len(keepSegments) == 0 {
 					output = "merged"
 				} else if finalVideoLabel != "" {
 					output = "comp_v"
@@ -93,7 +93,7 @@ func BuildFilterGraph(layers []RenderLayer, assFilePath string, keepSegments []K
 		}
 
 		// Add subtitles as the very last filter on the final output stream
-		if assFilePath != "" {
+		if assFilePath != "" && len(keepSegments) == 0 {
 			if finalVideoLabel != "" {
 				sections = append(sections, fmt.Sprintf("[%s]%s%s", current, BurnSubtitlesFilter{ASSFilePath: assFilePath}.Build(), finalVideoLabel))
 			} else {
@@ -128,7 +128,14 @@ func BuildFilterGraph(layers []RenderLayer, assFilePath string, keepSegments []K
 			sections = append(sections, fmt.Sprintf("[a_seg%d]atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS[%s]", i, seg.Start, seg.End, aLabel))
 			concatInputs = append(concatInputs, fmt.Sprintf("[%s][%s]", vLabel, aLabel))
 		}
-		sections = append(sections, fmt.Sprintf("%sconcat=n=%d:v=1:a=1", strings.Join(concatInputs, ""), n))
+
+		if assFilePath != "" {
+			sections = append(sections, fmt.Sprintf("%sconcat=n=%d:v=1:a=1[v_concat][a_concat]", strings.Join(concatInputs, ""), n))
+			sections = append(sections, fmt.Sprintf("[v_concat]%s", BurnSubtitlesFilter{ASSFilePath: assFilePath}.Build()))
+			sections = append(sections, "[a_concat]anull")
+		} else {
+			sections = append(sections, fmt.Sprintf("%sconcat=n=%d:v=1:a=1", strings.Join(concatInputs, ""), n))
+		}
 	}
 
 	return strings.Join(sections, ";")

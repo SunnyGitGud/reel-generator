@@ -1,0 +1,51 @@
+[Script Info]
+Title: Video Subtitles
+Original Script: videdit
+ScriptType: v4.00+
+Collisions: Normal
+PlayDepth: 0
+Timer: 100.0000
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,100,100,0,0,1,3.0,2.0,2,10,10,50,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:00.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}He stands in
+Dialogue: 0,0:00:00.75,0:00:01.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}the middle like
+Dialogue: 0,0:00:01.50,0:00:02.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}a cuck.
+Dialogue: 0,0:00:02.00,0:00:04.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}Both of them
+Dialogue: 0,0:00:04.25,0:00:05.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}fight.
+Dialogue: 0,0:00:14.00,0:00:14.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}He's not a
+Dialogue: 0,0:00:14.85,0:00:15.71,TikTok,,0,0,0,,{%c&H00B4E7FF&}good girl at
+Dialogue: 0,0:00:15.71,0:00:16.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}home.
+Dialogue: 0,0:00:16.00,0:00:16.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}lol
+Dialogue: 0,0:00:16.50,0:00:17.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro shaming him.
+Dialogue: 0,0:00:19.00,0:00:19.60,TikTok,,0,0,0,,{%c&H00B4E7FF&}There was a
+Dialogue: 0,0:00:19.60,0:00:20.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}footage leaked.
+Dialogue: 0,0:00:20.00,0:00:20.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}He tells the
+Dialogue: 0,0:00:20.85,0:00:21.71,TikTok,,0,0,0,,{%c&H00B4E7FF&}guys to bully
+Dialogue: 0,0:00:21.71,0:00:22.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}them.
+Dialogue: 0,0:00:22.00,0:00:23.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What?
+Dialogue: 0,0:00:24.00,0:00:25.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What?
+Dialogue: 0,0:00:26.00,0:00:27.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}hell nah
+Dialogue: 0,0:00:28.00,0:00:29.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Hell nah
+Dialogue: 0,0:00:30.00,0:00:31.07,TikTok,,0,0,0,,{%c&H00B4E7FF&}And it's crazy
+Dialogue: 0,0:00:31.07,0:00:32.14,TikTok,,0,0,0,,{%c&H00B4E7FF&}he doesn't do
+Dialogue: 0,0:00:32.14,0:00:33.21,TikTok,,0,0,0,,{%c&H00B4E7FF&}anything to f**king
+Dialogue: 0,0:00:33.21,0:00:34.28,TikTok,,0,0,0,,{%c&H00B4E7FF&}defend all the
+Dialogue: 0,0:00:34.28,0:00:35.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}derogatory sh**
+Dialogue: 0,0:00:35.00,0:00:35.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}that all these
+Dialogue: 0,0:00:35.85,0:00:36.71,TikTok,,0,0,0,,{%c&H00B4E7FF&}stupid people spout
+Dialogue: 0,0:00:36.71,0:00:37.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}man.
+Dialogue: 0,0:00:39.00,0:00:40.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Like what?
+Dialogue: 0,0:00:40.00,0:00:41.28,TikTok,,0,0,0,,{%c&H00B4E7FF&}Like this guy
+Dialogue: 0,0:00:41.28,0:00:42.57,TikTok,,0,0,0,,{%c&H00B4E7FF&}himself is you
+Dialogue: 0,0:00:42.57,0:00:43.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}know taking Indian
+Dialogue: 0,0:00:43.85,0:00:45.14,TikTok,,0,0,0,,{%c&H00B4E7FF&}men back to
+Dialogue: 0,0:00:45.14,0:00:46.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}200 years.
+Dialogue: 0,0:00:47.00,0:00:49.33,TikTok,,0,0,0,,{%c&H00B4E7FF&}Like he is
+Dialogue: 0,0:00:49.33,0:00:51.66,TikTok,,0,0,0,,{%c&H00B4E7FF&}regressing our f**king
+Dialogue: 0,0:00:51.66,0:00:54.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}entire gender bro.

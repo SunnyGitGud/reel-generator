@@ -53,107 +53,174 @@
                 </div>
             </div>
 
-            <!-- Layers Panel -->
-            <div class="panel-section flex-grow">
-                <div class="section-title-row">
-                    <h3>Layers</h3>
-                    <button id="btn-add-layer" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" title="Add a new video layer">+ Add Layer</button>
+            <!-- Wrapper for Layers View inside Sidebar -->
+            <div id="sidebar-layers-view" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden;">
+                <!-- Layers Panel -->
+                <div class="panel-section flex-grow" style="display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="section-title-row">
+                        <h3>Layers</h3>
+                        <button id="btn-add-layer" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" title="Add a new video layer">+ Add Layer</button>
+                    </div>
+                    <div class="layer-list" id="layer-list" style="overflow-y: auto; flex-grow: 1;">
+                        <!-- Dynamic Layer List Items -->
+                    </div>
                 </div>
-                <div class="layer-list" id="layer-list">
-                    <!-- Dynamic Layer List Items -->
+
+                <!-- Transform Panel -->
+                <div class="panel-section" id="transform-panel" style="display: none; flex-shrink: 0; overflow-y: auto; max-height: 50vh;">
+                    <h3>Transform (<span id="selected-layer-name">none</span>)</h3>
+                    <div class="transform-grid">
+                        <div class="input-group">
+                            <label for="pos-x">X</label>
+                            <input type="number" id="pos-x" name="x">
+                        </div>
+                        <div class="input-group">
+                            <label for="pos-y">Y</label>
+                            <input type="number" id="pos-y" name="y">
+                        </div>
+                        <div class="input-group">
+                            <label for="dim-w">Width</label>
+                            <input type="number" id="dim-w" name="width">
+                        </div>
+                        <div class="input-group">
+                            <label for="dim-h">Height</label>
+                            <input type="number" id="dim-h" name="height">
+                        </div>
+                    </div>
+                    <div class="z-index-row">
+                        <label for="layer-zindex">Z-Index</label>
+                        <input type="number" id="layer-zindex" name="zindex" min="0" max="99">
+                    </div>
+                    <div class="z-index-row"
+                        style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <label for="layer-scalemode" style="font-size: 0.8rem; color: var(--text-muted);">Scale Mode</label>
+                        <select id="layer-scalemode" name="scalemode"
+                            style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; font-size: 0.875rem; width: 120px;">
+                            <option value="stretch">Stretch</option>
+                            <option value="fit">Fit (Contain)</option>
+                            <option value="fill">Fill (Cover)</option>
+                        </select>
+                    </div>
+                    <div class="z-index-row"
+                        style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <label for="layer-lock-ar" style="font-size: 0.8rem; color: var(--text-muted);">Lock Aspect Ratio</label>
+                        <input type="checkbox" id="layer-lock-ar" name="lock_ar"
+                            style="width: 18px; height: 18px; cursor: pointer;">
+                    </div>
+                    <div class="z-index-row" style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                        <label for="layer-custom-name" style="font-size: 0.8rem; color: var(--text-muted);">Layer Name</label>
+                        <input type="text" id="layer-custom-name" name="custom_name" placeholder="Rename layer..." style="width: 100%; background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 6px; outline: none; font-size: 0.875rem;">
+                    </div>
+                    <div class="z-index-row" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <label for="layer-locked-chk" style="font-size: 0.8rem; color: var(--text-muted);">Lock Position</label>
+                        <input type="checkbox" id="layer-locked-chk" name="locked" style="width: 18px; height: 18px; cursor: pointer;">
+                    </div>
+
+                    <!-- Crop Settings Subpanel -->
+                    <div id="crop-panel"
+                        style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
+                        <h3
+                            style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">
+                            Crop & Scale</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div>
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                    <label for="layer-scale">Scale</label>
+                                    <span id="layer-scale-val">100%</span>
+                                </div>
+                                <input type="range" id="layer-scale" min="10" max="300" value="100" style="width: 100%;">
+                            </div>
+                            <div>
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                    <label for="crop-left">Crop Left</label>
+                                    <span id="crop-left-val">0%</span>
+                                </div>
+                                <input type="range" id="crop-left" min="0" max="100" value="0" style="width: 100%;">
+                            </div>
+                            <div>
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                    <label for="crop-right">Crop Right</label>
+                                    <span id="crop-right-val">0%</span>
+                                </div>
+                                <input type="range" id="crop-right" min="0" max="100" value="0" style="width: 100%;">
+                            </div>
+                            <div>
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                    <label for="crop-top">Crop Top</label>
+                                    <span id="crop-top-val">0%</span>
+                                </div>
+                                <input type="range" id="crop-top" min="0" max="100" value="0" style="width: 100%;">
+                            </div>
+                            <div>
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
+                                    <label for="crop-bottom">Crop Bottom</label>
+                                    <span id="crop-bottom-val">0%</span>
+                                </div>
+                                <input type="range" id="crop-bottom" min="0" max="100" value="0" style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Transform Panel -->
-            <div class="panel-section" id="transform-panel" style="display: none;">
-                <h3>Transform (<span id="selected-layer-name">none</span>)</h3>
-                <div class="transform-grid">
-                    <div class="input-group">
-                        <label for="pos-x">X</label>
-                        <input type="number" id="pos-x" name="x">
+            <!-- Wrapper for Audio View inside Sidebar -->
+            <div id="sidebar-audio-view" style="display: none; flex-direction: column; flex-grow: 1; overflow: hidden;">
+                <!-- Silence Detection Panel -->
+                <div class="panel-section">
+                    <h3>Smart Auto-Cut</h3>
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px; font-size: 0.8rem;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label for="select-aggression" style="color: var(--text-muted);">Presets</label>
+                            <select id="select-aggression" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; cursor: pointer; width: 100%;">
+                                <option value="custom">Custom Settings</option>
+                                <option value="very-conservative">Very Conservative</option>
+                                <option value="conservative">Conservative</option>
+                                <option value="normal" selected>Normal Auto-Cut</option>
+                                <option value="aggressive">Aggressive</option>
+                                <option value="very-aggressive">Very Aggressive</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <label for="input-threshold" style="color: var(--text-muted);">Threshold</label>
+                                <span id="label-threshold">-35 dB</span>
+                            </div>
+                            <input type="range" id="input-threshold" min="-60" max="-10" value="-35" style="width: 100%; cursor: pointer;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <label for="input-min-duration" style="color: var(--text-muted);">Min Duration</label>
+                                <span id="label-min-duration">300ms</span>
+                            </div>
+                            <input type="range" id="input-min-duration" min="100" max="2000" value="300" step="50" style="width: 100%; cursor: pointer;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <label for="input-padding-before" style="color: var(--text-muted);">Pad Before</label>
+                                <span id="label-padding-before">100ms</span>
+                            </div>
+                            <input type="range" id="input-padding-before" min="0" max="1000" value="100" step="50" style="width: 100%; cursor: pointer;">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <label for="input-padding-after" style="color: var(--text-muted);">Pad After</label>
+                                <span id="label-padding-after">150ms</span>
+                            </div>
+                            <input type="range" id="input-padding-after" min="0" max="1000" value="150" step="50" style="width: 100%; cursor: pointer;">
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label for="pos-y">Y</label>
-                        <input type="number" id="pos-y" name="y">
-                    </div>
-                    <div class="input-group">
-                        <label for="dim-w">Width</label>
-                        <input type="number" id="dim-w" name="width">
-                    </div>
-                    <div class="input-group">
-                        <label for="dim-h">Height</label>
-                        <input type="number" id="dim-h" name="height">
-                    </div>
-                </div>
-                <div class="z-index-row">
-                    <label for="layer-zindex">Z-Index</label>
-                    <input type="number" id="layer-zindex" name="zindex" min="0" max="99">
-                </div>
-                <div class="z-index-row"
-                    style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <label for="layer-scalemode" style="font-size: 0.8rem; color: var(--text-muted);">Scale Mode</label>
-                    <select id="layer-scalemode" name="scalemode"
-                        style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px; border-radius: 6px; outline: none; font-size: 0.875rem; width: 120px;">
-                        <option value="stretch">Stretch</option>
-                        <option value="fit">Fit (Contain)</option>
-                        <option value="fill">Fill (Cover)</option>
-                    </select>
-                </div>
-                <div class="z-index-row"
-                    style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <label for="layer-lock-ar" style="font-size: 0.8rem; color: var(--text-muted);">Lock Aspect
-                        Ratio</label>
-                    <input type="checkbox" id="layer-lock-ar" name="lock_ar"
-                        style="width: 18px; height: 18px; cursor: pointer;">
                 </div>
 
-                <!-- Crop Settings Subpanel -->
-                <div id="crop-panel"
-                    style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
-                    <h3
-                        style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">
-                        Crop & Scale</h3>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div>
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="layer-scale">Scale</label>
-                                <span id="layer-scale-val">100%</span>
-                            </div>
-                            <input type="range" id="layer-scale" min="10" max="300" value="100" style="width: 100%;">
-                        </div>
-                        <div>
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-left">Crop Left</label>
-                                <span id="crop-left-val">0%</span>
-                            </div>
-                            <input type="range" id="crop-left" min="0" max="100" value="0" style="width: 100%;">
-                        </div>
-                        <div>
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-right">Crop Right</label>
-                                <span id="crop-right-val">0%</span>
-                            </div>
-                            <input type="range" id="crop-right" min="0" max="100" value="0" style="width: 100%;">
-                        </div>
-                        <div>
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-top">Crop Top</label>
-                                <span id="crop-top-val">0%</span>
-                            </div>
-                            <input type="range" id="crop-top" min="0" max="100" value="0" style="width: 100%;">
-                        </div>
-                        <div>
-                            <div
-                                style="display: flex; justify-content: space-between; font-size: 0.725rem; color: var(--text-muted); margin-bottom: 4px;">
-                                <label for="crop-bottom">Crop Bottom</label>
-                                <span id="crop-bottom-val">0%</span>
-                            </div>
-                            <input type="range" id="crop-bottom" min="0" max="100" value="0" style="width: 100%;">
-                        </div>
+                <!-- Timeline Segments Section -->
+                <div class="panel-section flex-grow" style="display: flex; flex-direction: column; overflow: hidden; border-bottom: none;">
+                    <h3>Timeline Clips</h3>
+                    <div id="sidebar-segments-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; overflow-y: auto; flex-grow: 1; padding-bottom: 20px;">
+                        <!-- Dynamic timeline segment list items -->
                     </div>
                 </div>
             </div>
@@ -183,6 +250,12 @@
         <main class="workspace">
             <!-- Toolbar -->
             <header class="toolbar">
+                <!-- Layers / Audio View Switcher -->
+                <div class="view-switch-container" style="display: flex; gap: 4px; background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 3px; border-radius: 6px; margin-right: 15px;">
+                    <button id="btn-view-layers" class="switch-btn active" title="Switch to visual layers editor">Layers</button>
+                    <button id="btn-view-audio" class="switch-btn" title="Switch to audio waveform timeline and cuts editor">Audio</button>
+                </div>
+
                 <div class="zoom-controls" id="zoom-controls-group">
                     <button id="btn-zoom-out" class="zoom-btn">—</button>
                     <span class="zoom-level" id="zoom-label">50%</span>
@@ -283,40 +356,7 @@
                     </div>
                 </div>
                 
-                <!-- Silence Detection Panel -->
-                <div class="silence-panel" style="display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 12px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-size: 0.75rem; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="select-aggression" style="font-weight: 600;">Smart Cut:</label>
-                        <select id="select-aggression" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 2px 6px; border-radius: 4px; outline: none; cursor: pointer;">
-                            <option value="custom">Custom Settings</option>
-                            <option value="very-conservative">Very Conservative</option>
-                            <option value="conservative">Conservative</option>
-                            <option value="normal" selected>Normal Auto-Cut</option>
-                            <option value="aggressive">Aggressive</option>
-                            <option value="very-aggressive">Very Aggressive</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="input-threshold">Threshold:</label>
-                        <input type="range" id="input-threshold" min="-60" max="-10" value="-35" style="width: 80px; cursor: pointer;">
-                        <span id="label-threshold">-35 dB</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="input-min-duration">Min Duration:</label>
-                        <input type="range" id="input-min-duration" min="100" max="2000" value="300" step="50" style="width: 80px; cursor: pointer;">
-                        <span id="label-min-duration">300ms</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="input-padding-before">Pad Before:</label>
-                        <input type="range" id="input-padding-before" min="0" max="1000" value="100" step="50" style="width: 80px; cursor: pointer;">
-                        <span id="label-padding-before">100ms</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <label for="input-padding-after">Pad After:</label>
-                        <input type="range" id="input-padding-after" min="0" max="1000" value="150" step="50" style="width: 80px; cursor: pointer;">
-                        <span id="label-padding-after">150ms</span>
-                    </div>
-                </div>
+                <!-- We removed Silence Detection Panel from here and put it in sidebar-audio-view -->
 
                 <div class="timeline-viewport" id="timeline-viewport" style="position: relative; overflow-x: auto; width: 100%; height: 120px; background-color: #1a1a1a;">
                     <div class="timeline-track" id="timeline-track" style="position: relative; height: 100%; min-width: 100%; width: 100%; user-select: none;">

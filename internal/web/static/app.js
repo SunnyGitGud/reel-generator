@@ -267,6 +267,23 @@ function renderLayerList() {
             toggleLayerVisibility(layer.name);
         });
 
+        // Locked icon
+        const lockBtn = document.createElement('button');
+        lockBtn.className = `layer-lock-toggle ${layer.locked ? 'locked' : ''}`;
+        lockBtn.innerHTML = layer.locked ? '🔒' : '🔓';
+        lockBtn.title = layer.locked ? 'Unlock Layer' : 'Lock Layer';
+        lockBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            layer.locked = !layer.locked;
+            lockBtn.innerHTML = layer.locked ? '🔒' : '🔓';
+            lockBtn.classList.toggle('locked', layer.locked);
+            if (state.selectedLayerName === layer.name) {
+                const chk = document.getElementById('layer-locked-chk');
+                if (chk) chk.checked = layer.locked;
+            }
+            saveLayerPosition(layer);
+        });
+
         const details = document.createElement('div');
         details.className = 'layer-details';
 
@@ -276,7 +293,7 @@ function renderLayerList() {
 
         const title = document.createElement('span');
         title.className = 'layer-title-text';
-        title.textContent = getLayerDisplayName(layer.name);
+        title.textContent = layer.label || getLayerDisplayName(layer.name);
 
         const badge = document.createElement('span');
         badge.className = 'layer-badge';
@@ -293,6 +310,7 @@ function renderLayerList() {
         details.appendChild(coords);
 
         item.appendChild(eyeBtn);
+        item.appendChild(lockBtn);
         item.appendChild(details);
 
         item.addEventListener('click', () => {
@@ -342,7 +360,15 @@ function selectLayer(name) {
 
     const layer = state.layers.find(l => l.name === name);
     if (layer) {
-        selectedLayerNameDisplay.textContent = getLayerDisplayName(layer.name);
+        selectedLayerNameDisplay.textContent = layer.label || getLayerDisplayName(layer.name);
+        const customNameInput = document.getElementById('layer-custom-name');
+        if (customNameInput) {
+            customNameInput.value = layer.label || getLayerDisplayName(layer.name);
+        }
+        const lockedChk = document.getElementById('layer-locked-chk');
+        if (lockedChk) {
+            lockedChk.checked = !!layer.locked;
+        }
         inputX.value = layer.x;
         inputY.value = layer.y;
         inputW.value = layer.width;
@@ -400,7 +426,7 @@ function renderLayerFrames() {
         // Label
         const label = document.createElement('div');
         label.className = 'layer-label';
-        label.textContent = getLayerDisplayName(layer.name);
+        label.textContent = layer.label || getLayerDisplayName(layer.name);
         frame.appendChild(label);
 
         // Resize Handles (NW, NE, SW, SE)
@@ -628,6 +654,7 @@ function setupEventListeners() {
 
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
+        if (layer.locked) return;
 
         if (state.isDragging) {
             // Move layer
@@ -887,6 +914,44 @@ function setupEventListeners() {
         input.addEventListener('input', triggerCropUpdate);
     });
 
+    // Custom Name and Locked Layer Inputs
+    const customNameInput = document.getElementById('layer-custom-name');
+    if (customNameInput) {
+        customNameInput.addEventListener('input', (e) => {
+            const layer = state.layers.find(l => l.name === state.selectedLayerName);
+            if (!layer) return;
+            layer.label = e.target.value;
+            const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
+            if (frame) {
+                const labelDiv = frame.querySelector('.layer-label');
+                if (labelDiv) labelDiv.textContent = layer.label;
+            }
+            renderLayerList();
+            saveLayerPosition(layer);
+        });
+    }
+
+    const lockedChk = document.getElementById('layer-locked-chk');
+    if (lockedChk) {
+        lockedChk.addEventListener('change', (e) => {
+            const layer = state.layers.find(l => l.name === state.selectedLayerName);
+            if (!layer) return;
+            layer.locked = e.target.checked;
+            renderLayerList();
+            saveLayerPosition(layer);
+        });
+    }
+
+    // Header View Switch Buttons
+    const btnViewLayers = document.getElementById('btn-view-layers');
+    const btnViewAudio = document.getElementById('btn-view-audio');
+    if (btnViewLayers) {
+        btnViewLayers.addEventListener('click', () => switchEditorView('layers'));
+    }
+    if (btnViewAudio) {
+        btnViewAudio.addEventListener('click', () => switchEditorView('audio'));
+    }
+
     // Keyboard arrow keys nudge
     window.addEventListener('keydown', (e) => {
         if (!state.selectedLayerName) return;
@@ -896,6 +961,7 @@ function setupEventListeners() {
 
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
+        if (layer.locked) return;
 
         const step = e.shiftKey ? 10 : 1;
         let moved = false;
@@ -1074,7 +1140,7 @@ function setupEventListeners() {
         input.addEventListener('touchstart', pushStateToHistory);
     });
 
-    // Keyboard Ctrl+Z and Ctrl+Y/Ctrl+Shift+Z Undo/Redo listener
+    // Keyboard Ctrl+Z, Ctrl+Y Undo/Redo, and 'S' Split listeners
     window.addEventListener('keydown', (e) => {
         if (document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'range') return;
 
@@ -1084,6 +1150,9 @@ function setupEventListeners() {
         } else if ((e.ctrlKey && e.key.toLowerCase() === 'y') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
             e.preventDefault();
             redo();
+        } else if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            splitSegmentAtPlayhead();
         }
     });
 
@@ -1109,7 +1178,9 @@ async function saveLayerPosition(layer) {
                 crop_x_percent: layer.crop_x_percent || 0,
                 crop_y_percent: layer.crop_y_percent || 0,
                 crop_width_percent: layer.crop_width_percent || 0,
-                crop_height_percent: layer.crop_height_percent || 0
+                crop_height_percent: layer.crop_height_percent || 0,
+                label: layer.label || '',
+                locked: !!layer.locked
             })
         });
     } catch (err) {
@@ -1631,7 +1702,17 @@ async function fetchTimeline() {
         state.videoDuration = data.duration;
         state.currentTime = 0.0;
 
+        // Initialize timeline cuts as segments
+        state.cuts = [{
+            id: Math.random(),
+            start: 0.0,
+            end: state.videoDuration,
+            disabled: false
+        }];
+
         updateTimelineUI();
+        renderCuts();
+        renderSidebarSegments();
 
         // Render thumbnails
         if (timelineThumbnails) {
@@ -2230,28 +2311,54 @@ function recalculateAutoCuts() {
     const padBefore = parseInt(document.getElementById('input-padding-before').value);
     const padAfter = parseInt(document.getElementById('input-padding-after').value);
 
-    // Retain manual cuts
-    const manualCuts = state.cuts.filter(c => c.manual);
-
     // Auto-detect cuts using db readings
-    const autoCuts = detectSilences(state.audioData.db, threshold, minDur, padBefore, padAfter);
+    const silenceCuts = detectSilences(state.audioData.db, threshold, minDur, padBefore, padAfter);
 
-    state.cuts = [...manualCuts, ...autoCuts];
-    
-    sortAndMergeCuts();
+    // Sort and merge the silent regions
+    const mergedSilences = sortAndMergeCuts(silenceCuts);
+
+    // Convert silent regions into kept segments (the inverse)
+    const duration = state.videoDuration || 0.0;
+    const keptSegments = [];
+    let lastEnd = 0.0;
+
+    for (const silence of mergedSilences) {
+        if (silence.start > lastEnd + 0.01) {
+            keptSegments.push({
+                id: Math.random(),
+                start: lastEnd,
+                end: silence.start,
+                disabled: false
+            });
+        }
+        lastEnd = Math.max(lastEnd, silence.end);
+    }
+
+    if (duration > lastEnd + 0.01) {
+        keptSegments.push({
+            id: Math.random(),
+            start: lastEnd,
+            end: duration,
+            disabled: false
+        });
+    }
+
+    state.cuts = keptSegments;
     renderCuts();
+    renderSidebarSegments();
 }
 
-function sortAndMergeCuts() {
-    if (state.cuts.length === 0) return;
+function sortAndMergeCuts(cutsArray) {
+    if (!cutsArray || cutsArray.length === 0) return [];
 
-    state.cuts.sort((a, b) => a.start - b.start);
+    const cuts = cutsArray.map(c => ({...c}));
+    cuts.sort((a, b) => a.start - b.start);
 
     const merged = [];
-    let current = state.cuts[0];
+    let current = cuts[0];
 
-    for (let i = 1; i < state.cuts.length; i++) {
-        const next = state.cuts[i];
+    for (let i = 1; i < cuts.length; i++) {
+        const next = cuts[i];
 
         if (next.start <= current.end + 0.05) {
             current.end = Math.max(current.end, next.end);
@@ -2262,7 +2369,7 @@ function sortAndMergeCuts() {
         }
     }
     merged.push(current);
-    state.cuts = merged;
+    return merged;
 }
 
 function drawWaveform() {
@@ -2372,17 +2479,33 @@ function renderCuts() {
     container.innerHTML = '';
     const duration = state.videoDuration;
 
-    state.cuts.forEach(cut => {
+    state.cuts.forEach((cut, idx) => {
         const cutDiv = document.createElement('div');
         cutDiv.className = 'timeline-cut';
+        if (cut.disabled) {
+            cutDiv.classList.add('disabled');
+        }
+        if (cut.id === state.selectedSegmentId) {
+            cutDiv.classList.add('selected');
+        }
         cutDiv.style.left = `${(cut.start / duration) * 100}%`;
         cutDiv.style.width = `${((cut.end - cut.start) / duration) * 100}%`;
         cutDiv.dataset.id = cut.id;
 
         const label = document.createElement('span');
         label.className = 'cut-label';
-        label.textContent = `Cut: ${(cut.end - cut.start).toFixed(1)}s`;
+        label.textContent = `Clip ${idx + 1}: ${(cut.end - cut.start).toFixed(1)}s`;
         cutDiv.appendChild(label);
+
+        // Add selection listener
+        cutDiv.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('cut-handle') || e.target.classList.contains('cut-remove-btn') || e.target.classList.contains('cut-disable-btn')) {
+                return;
+            }
+            state.selectedSegmentId = cut.id;
+            renderCuts();
+            renderSidebarSegments();
+        });
 
         const leftHandle = document.createElement('div');
         leftHandle.className = 'cut-handle left-handle';
@@ -2402,13 +2525,26 @@ function renderCuts() {
         });
         cutDiv.appendChild(rightHandle);
 
+        const muteBtn = document.createElement('button');
+        muteBtn.className = 'cut-disable-btn';
+        muteBtn.innerHTML = cut.disabled ? '👁️' : '∅';
+        muteBtn.title = cut.disabled ? 'Enable Clip' : 'Disable Clip';
+        muteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cut.disabled = !cut.disabled;
+            renderCuts();
+            renderSidebarSegments();
+        });
+        cutDiv.appendChild(muteBtn);
+
         const removeBtn = document.createElement('button');
         removeBtn.className = 'cut-remove-btn';
         removeBtn.innerHTML = '&times;';
-        removeBtn.title = 'Remove Cut';
+        removeBtn.title = 'Delete Clip';
         removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             removeCut(cut.id);
+            renderSidebarSegments();
         });
         cutDiv.appendChild(removeBtn);
 
@@ -2443,17 +2579,22 @@ function handleDraggingCutHandle(clientX) {
     const cut = state.cuts.find(c => c.id === drag.cutId);
     if (!cut) return;
 
-    cut.manual = true;
+    const idx = state.cuts.findIndex(c => c.id === cut.id);
 
     if (drag.handleType === 'left') {
-        const newVal = Math.max(0.0, Math.min(cut.end - 0.05, drag.startVal + dt));
+        const minVal = (idx > 0) ? state.cuts[idx - 1].end : 0.0;
+        const maxVal = cut.end - 0.05;
+        const newVal = Math.max(minVal, Math.min(maxVal, drag.startVal + dt));
         cut.start = newVal;
     } else if (drag.handleType === 'right') {
-        const newVal = Math.max(cut.start + 0.05, Math.min(state.videoDuration, drag.startVal + dt));
+        const minVal = cut.start + 0.05;
+        const maxVal = (idx < state.cuts.length - 1) ? state.cuts[idx + 1].start : state.videoDuration;
+        const newVal = Math.max(minVal, Math.min(maxVal, drag.startVal + dt));
         cut.end = newVal;
     }
 
     renderCuts();
+    renderSidebarSegments();
 }
 
 function stopDraggingCutHandle() {
@@ -2462,52 +2603,223 @@ function stopDraggingCutHandle() {
     state.activeCutDrag = null;
     document.body.style.cursor = '';
 
-    sortAndMergeCuts();
     renderCuts();
+    renderSidebarSegments();
 }
 
-function addManualCutAtPlayhead() {
+function splitSegmentAtPlayhead() {
     if (!state.videoDuration) return;
+    const t = state.currentTime;
 
-    // Default manual cut width is 2 seconds (1s before, 1s after current playhead)
-    const start = Math.max(0.0, state.currentTime - 1.0);
-    const end = Math.min(state.videoDuration, state.currentTime + 1.0);
+    // Find the segment containing t
+    const segIdx = state.cuts.findIndex(seg => t > seg.start && t < seg.end);
+    if (segIdx === -1) {
+        showToast('Playhead is not inside any active clip.');
+        return;
+    }
 
-    state.cuts.push({
+    const seg = state.cuts[segIdx];
+    
+    // Split into two
+    const seg1 = {
         id: Math.random(),
-        start: start,
-        end: end,
-        manual: true
-    });
+        start: seg.start,
+        end: t,
+        disabled: seg.disabled
+    };
+    const seg2 = {
+        id: Math.random(),
+        start: t,
+        end: seg.end,
+        disabled: seg.disabled
+    };
 
-    sortAndMergeCuts();
+    // Replace the segment in state.cuts
+    state.cuts.splice(segIdx, 1, seg1, seg2);
+
     renderCuts();
-    showToast('Added manual cut overlay');
+    renderSidebarSegments();
+    showToast('Split clip at playhead');
 }
 
 function removeCut(id) {
     state.cuts = state.cuts.filter(c => c.id !== id);
     renderCuts();
-    showToast('Cut segment removed');
+    renderSidebarSegments();
+    showToast('Timeline clip deleted');
 }
 
 function getKeepSegments() {
-    const sortedCuts = [...state.cuts].sort((a, b) => a.start - b.start);
-    const keeps = [];
-    let current = 0.0;
+    return state.cuts
+        .filter(c => !c.disabled)
+        .map(c => ({ start: c.start, end: c.end }));
+}
 
-    for (const cut of sortedCuts) {
-        if (cut.start > current + 0.01) {
-            keeps.push({ start: current, end: cut.start });
+function renderSidebarSegments() {
+    const list = document.getElementById('sidebar-segments-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    state.cuts.forEach((seg, idx) => {
+        const item = document.createElement('div');
+        item.className = `segment-item ${seg.disabled ? 'disabled' : ''} ${seg.id === state.selectedSegmentId ? 'selected' : ''}`;
+        item.draggable = true;
+        item.dataset.index = idx;
+
+        // Drag and drop events
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', idx);
+            item.classList.add('dragging');
+        });
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+        });
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIdx = idx;
+            if (fromIdx !== toIdx) {
+                const [moved] = state.cuts.splice(fromIdx, 1);
+                state.cuts.splice(toIdx, 0, moved);
+                renderCuts();
+                renderSidebarSegments();
+            }
+        });
+
+        // Item Header
+        const header = document.createElement('div');
+        header.className = 'segment-item-header';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = `Clip ${idx + 1} (${(seg.end - seg.start).toFixed(1)}s)`;
+        header.appendChild(nameSpan);
+
+        const timeSpan = document.createElement('span');
+        timeSpan.style.fontFamily = 'monospace';
+        timeSpan.style.fontSize = '0.75rem';
+        timeSpan.textContent = `${seg.start.toFixed(1)}s - ${seg.end.toFixed(1)}s`;
+        header.appendChild(timeSpan);
+
+        item.appendChild(header);
+
+        // Controls Row
+        const controls = document.createElement('div');
+        controls.className = 'segment-item-controls';
+
+        // Move Up
+        const btnUp = document.createElement('button');
+        btnUp.className = 'segment-btn';
+        btnUp.textContent = '▲';
+        btnUp.title = 'Move Up';
+        btnUp.disabled = idx === 0;
+        btnUp.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (idx > 0) {
+                const temp = state.cuts[idx];
+                state.cuts[idx] = state.cuts[idx - 1];
+                state.cuts[idx - 1] = temp;
+                renderCuts();
+                renderSidebarSegments();
+            }
+        });
+        controls.appendChild(btnUp);
+
+        // Move Down
+        const btnDown = document.createElement('button');
+        btnDown.className = 'segment-btn';
+        btnDown.textContent = '▼';
+        btnDown.title = 'Move Down';
+        btnDown.disabled = idx === state.cuts.length - 1;
+        btnDown.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (idx < state.cuts.length - 1) {
+                const temp = state.cuts[idx];
+                state.cuts[idx] = state.cuts[idx + 1];
+                state.cuts[idx + 1] = temp;
+                renderCuts();
+                renderSidebarSegments();
+            }
+        });
+        controls.appendChild(btnDown);
+
+        // Disable/Enable
+        const btnMute = document.createElement('button');
+        btnMute.className = `segment-btn ${seg.disabled ? 'active' : ''}`;
+        btnMute.textContent = seg.disabled ? 'Enable' : 'Disable';
+        btnMute.addEventListener('click', (e) => {
+            e.stopPropagation();
+            seg.disabled = !seg.disabled;
+            renderCuts();
+            renderSidebarSegments();
+        });
+        controls.appendChild(btnMute);
+
+        // Delete
+        const btnDel = document.createElement('button');
+        btnDel.className = 'segment-btn danger';
+        btnDel.textContent = 'Delete';
+        btnDel.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeCut(seg.id);
+            renderSidebarSegments();
+        });
+        controls.appendChild(btnDel);
+
+        item.appendChild(controls);
+
+        item.addEventListener('click', () => {
+            state.selectedSegmentId = seg.id;
+            renderCuts();
+            renderSidebarSegments();
+            updatePreviewFrameAtTime(seg.start);
+        });
+
+        list.appendChild(item);
+    });
+}
+
+function updatePreviewFrameAtTime(t) {
+    state.currentTime = t;
+    updateTimelineUI();
+    document.querySelectorAll('.layer-frame img').forEach(img => {
+        if (img.src.includes('/api/raw-frame.png')) {
+            img.src = `/api/raw-frame.png?time=${t}&t=${Date.now()}`;
         }
-        current = Math.max(current, cut.end);
-    }
+    });
+    const vidSource = document.getElementById('vid-source');
+    if (vidSource) vidSource.currentTime = t;
+    const vidOutput = document.getElementById('vid-output');
+    if (vidOutput) vidOutput.currentTime = t;
+}
 
-    if (current < state.videoDuration - 0.01) {
-        keeps.push({ start: current, end: state.videoDuration });
-    }
+function switchEditorView(view) {
+    const btnLayers = document.getElementById('btn-view-layers');
+    const btnAudio = document.getElementById('btn-view-audio');
+    const sidebarLayers = document.getElementById('sidebar-layers-view');
+    const sidebarAudio = document.getElementById('sidebar-audio-view');
+    const overlayContainer = document.getElementById('layer-overlay-container');
+    const subtitlesSidebar = document.querySelector('.subtitles-sidebar');
 
-    return keeps;
+    if (view === 'layers') {
+        if (btnLayers) btnLayers.classList.add('active');
+        if (btnAudio) btnAudio.classList.remove('active');
+        if (sidebarLayers) sidebarLayers.style.display = 'flex';
+        if (sidebarAudio) sidebarAudio.style.display = 'none';
+        if (overlayContainer) overlayContainer.style.display = 'block';
+        if (subtitlesSidebar) subtitlesSidebar.style.display = 'flex';
+    } else if (view === 'audio') {
+        if (btnLayers) btnLayers.classList.remove('active');
+        if (btnAudio) btnAudio.classList.add('active');
+        if (sidebarLayers) sidebarLayers.style.display = 'none';
+        if (sidebarAudio) sidebarAudio.style.display = 'flex';
+        if (overlayContainer) overlayContainer.style.display = 'none';
+        if (subtitlesSidebar) subtitlesSidebar.style.display = 'none';
+        
+        renderSidebarSegments();
+    }
 }
 
 function setupSilenceDetectionControls() {
@@ -2559,7 +2871,7 @@ function setupSilenceDetectionControls() {
     });
 
     if (btnAddCut) {
-        btnAddCut.addEventListener('click', addManualCutAtPlayhead);
+        btnAddCut.addEventListener('click', splitSegmentAtPlayhead);
     }
 
     const btnTimelineZoomIn = document.getElementById('btn-timeline-zoom-in');

@@ -26,6 +26,9 @@ type RenderLayer struct {
 	ImagePath string // Path to image overlay (if applicable)
 
 	Filters []ffmpeg.Filter
+
+	Label  string
+	Locked bool
 }
 
 func (r RenderLayer) GetName() string {
@@ -185,6 +188,8 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 				Sigma: 25,
 			},
 		},
+		Label:  "Background",
+		Locked: true,
 	}
 
 	// 2. Gameplay layer
@@ -240,6 +245,8 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 		Visible:    gameVisible,
 		ZIndex:     gameZIndex,
 		Filters:    gameFilters,
+		Label:      p.Gameplay.Label,
+		Locked:     p.Gameplay.Locked,
 	}
 
 	// 3. Facecam layer
@@ -303,6 +310,8 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 		Visible:    camVisible,
 		ZIndex:     camZIndex,
 		Filters:    camFilters,
+		Label:      p.Facecam.Label,
+		Locked:     p.Facecam.Locked,
 	}
 
 	// 4. Overlay image layer
@@ -385,6 +394,8 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 		ZIndex:     overlayZIndex,
 		ImagePath:  absImgPath,
 		Filters:    overlayFilters,
+		Label:      p.Overlay.Label,
+		Locked:     p.Overlay.Locked,
 	}
 
 	layers := []RenderLayer{bgLayer, gameLayer, camLayer, overlayLayer}
@@ -433,6 +444,8 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 			Visible:    extraVisible,
 			ZIndex:     extraZIndex,
 			Filters:    extraFilters,
+			Label:      extra.Label,
+			Locked:     extra.Locked,
 		})
 	}
 
@@ -457,6 +470,8 @@ func NewBackgroundLayer() RenderLayer {
 				Sigma: 25,
 			},
 		},
+		Label:  "Background",
+		Locked: true,
 	}
 }
 
@@ -492,6 +507,8 @@ func NewFacecamLayer(inputWidth, inputHeight int) RenderLayer {
 				Thickness: 4,
 			},
 		},
+		Label:  "Facecam",
+		Locked: false,
 	}
 }
 
@@ -509,6 +526,8 @@ func NewGameplayLayer(inputWidth, inputHeight int) RenderLayer {
 				Height: 1012,
 			},
 		},
+		Label:  "Gameplay",
+		Locked: false,
 	}
 }
 

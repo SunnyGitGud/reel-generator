@@ -18,6 +18,8 @@ type Overlay struct {
 	CropYPercent      float64 `json:"crop_y_percent,omitempty"`
 	CropWidthPercent  float64 `json:"crop_width_percent,omitempty"`
 	CropHeightPercent float64 `json:"crop_height_percent,omitempty"`
+	Label             string  `json:"label,omitempty"`
+	Locked            bool    `json:"locked,omitempty"`
 }
 
 type LayerConfig struct {
@@ -33,6 +35,8 @@ type LayerConfig struct {
 	Visible           *bool   `json:"visible,omitempty"`
 	ZIndex            int     `json:"z_index,omitempty"`
 	ScaleMode         string  `json:"scale_mode,omitempty"`
+	Label             string  `json:"label,omitempty"`
+	Locked            bool    `json:"locked,omitempty"`
 }
 
 type SubtitlePresetConfig struct {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -62,6 +63,8 @@ type LayerResponse struct {
 	CropHeightPercent float64 `json:"crop_height_percent"`
 	InputWidth        int     `json:"input_width"`
 	InputHeight       int     `json:"input_height"`
+	Label             string  `json:"label"`
+	Locked            bool    `json:"locked"`
 }
 
 type LayoutResponse struct {
@@ -80,6 +83,8 @@ type PositionRequest struct {
 	CropYPercent      float64 `json:"crop_y_percent"`
 	CropWidthPercent  float64 `json:"crop_width_percent"`
 	CropHeightPercent float64 `json:"crop_height_percent"`
+	Label             string  `json:"label,omitempty"`
+	Locked            *bool   `json:"locked,omitempty"`
 }
 
 type SizeRequest struct {
@@ -319,6 +324,8 @@ func (s *Server) handleGetLayout(w http.ResponseWriter, r *http.Request) {
 			CropHeightPercent: cropH,
 			InputWidth:        inputW,
 			InputHeight:       inputH,
+			Label:             l.Label,
+			Locked:            l.Locked,
 		})
 	}
 
@@ -355,6 +362,12 @@ func (s *Server) handleUpdatePosition(w http.ResponseWriter, r *http.Request) {
 			s.layers[i].Visible = req.Visible
 			s.layers[i].ZIndex = req.ZIndex
 			s.layers[i].SetCrop(req.CropXPercent, req.CropYPercent, req.CropWidthPercent, req.CropHeightPercent)
+			if req.Label != "" {
+				s.layers[i].Label = req.Label
+			}
+			if req.Locked != nil {
+				s.layers[i].Locked = *req.Locked
+			}
 			found = true
 			break
 		}
@@ -468,6 +481,8 @@ func (s *Server) handleAddLayer(w http.ResponseWriter, r *http.Request) {
 				ScaleMode: "stretch",
 			},
 		},
+		Label:  fmt.Sprintf("Extra Layer %d", extraCount+1),
+		Locked: false,
 	}
 
 	s.layers = append(s.layers, newLayer)
@@ -487,6 +502,8 @@ func (s *Server) handleAddLayer(w http.ResponseWriter, r *http.Request) {
 		CropHeightPercent: 1.0,
 		InputWidth:        s.inputWidth,
 		InputHeight:       s.inputHeight,
+		Label:             fmt.Sprintf("Extra Layer %d", extraCount+1),
+		Locked:            false,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -551,6 +568,8 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 			s.preset.Gameplay.CropWidthPercent = cropW
 			s.preset.Gameplay.CropHeightPercent = cropH
 			s.preset.Gameplay.ScaleMode = l.GetScaleMode()
+			s.preset.Gameplay.Label = l.Label
+			s.preset.Gameplay.Locked = l.Locked
 		case "cam":
 			s.preset.Facecam.X = l.X
 			s.preset.Facecam.Y = l.Y
@@ -563,6 +582,8 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 			s.preset.Facecam.CropWidthPercent = cropW
 			s.preset.Facecam.CropHeightPercent = cropH
 			s.preset.Facecam.ScaleMode = l.GetScaleMode()
+			s.preset.Facecam.Label = l.Label
+			s.preset.Facecam.Locked = l.Locked
 		case "overlay":
 			s.preset.Overlay.X = l.X
 			s.preset.Overlay.Y = l.Y
@@ -575,6 +596,8 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 			s.preset.Overlay.CropWidthPercent = cropW
 			s.preset.Overlay.CropHeightPercent = cropH
 			s.preset.Overlay.ScaleMode = l.GetScaleMode()
+			s.preset.Overlay.Label = l.Label
+			s.preset.Overlay.Locked = l.Locked
 		default:
 			// Dynamic extra layer
 			s.preset.ExtraLayers = append(s.preset.ExtraLayers, preset.LayerConfig{
@@ -590,6 +613,8 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 				CropWidthPercent:  cropW,
 				CropHeightPercent: cropH,
 				ScaleMode:         l.GetScaleMode(),
+				Label:             l.Label,
+				Locked:            l.Locked,
 			})
 		}
 	}
@@ -1400,8 +1425,18 @@ func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 
 	baseName := filepath.Base(videoPath)
 	inputBaseNoExt := strings.TrimSuffix(baseName, filepath.Ext(baseName))
-	srtPath := filepath.Join("output", inputBaseNoExt+".srt")
-	assPath := filepath.Join("output", inputBaseNoExt+".ass")
+	srtPath := filepath.Join("output", inputBaseNoExt+"_editor.srt")
+	assPath := filepath.Join("output", inputBaseNoExt+"_editor.ass")
+
+	// Migration: if the editor SRT doesn't exist but the original SRT does, copy it
+	originalSRT := filepath.Join("output", inputBaseNoExt+".srt")
+	if _, err := os.Stat(srtPath); os.IsNotExist(err) {
+		if _, errOrig := os.Stat(originalSRT); errOrig == nil {
+			if data, errRead := os.ReadFile(originalSRT); errRead == nil {
+				_ = os.WriteFile(srtPath, data, 0644)
+			}
+		}
+	}
 
 	// Ensure output dir exists
 	if err := os.MkdirAll("output", 0755); err != nil {
@@ -1480,6 +1515,124 @@ type RenderRequest struct {
 	KeepSegments []ffmpeg.KeepSegment `json:"keep_segments"`
 }
 
+func generateShiftedSubtitles(srtPath string, inputVideo string, preset *preset.Preset, keepSegments []ffmpeg.KeepSegment) (string, error) {
+	if srtPath == "" {
+		return "", nil
+	}
+
+	// Parse original SRT
+	track, err := subtitle.ParseSRT(srtPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse original SRT: %w", err)
+	}
+
+	// Create new shifted track
+	shiftedTrack := subtitle.NewSubtitleTrack()
+	currentShiftedTime := 0.0
+
+	var tempSubs []subtitle.Subtitle
+
+	for _, seg := range keepSegments {
+		duration := seg.End - seg.Start
+		if duration <= 0 {
+			continue
+		}
+
+		for _, item := range track.Items {
+			// Check if subtitle overlaps with the kept segment
+			if item.End > seg.Start && item.Start < seg.End {
+				clippedStart := item.Start
+				if clippedStart < seg.Start {
+					clippedStart = seg.Start
+				}
+				clippedEnd := item.End
+				if clippedEnd > seg.End {
+					clippedEnd = seg.End
+				}
+
+				if clippedStart < clippedEnd {
+					newStart := currentShiftedTime + (clippedStart - seg.Start)
+					newEnd := currentShiftedTime + (clippedEnd - seg.Start)
+
+					tempSubs = append(tempSubs, subtitle.Subtitle{
+						Start: newStart,
+						End:   newEnd,
+						Text:  item.Text,
+					})
+				}
+			}
+		}
+		currentShiftedTime += duration
+	}
+
+	// Resolve overlaps
+	resolvedSubs := resolveOverlaps(tempSubs)
+
+	for _, sub := range resolvedSubs {
+		shiftedTrack.Add(sub)
+	}
+
+	// Determine paths for the shifted subtitle files
+	baseName := filepath.Base(inputVideo)
+	inputBaseNoExt := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	
+	shiftedSRTPath := filepath.Join("output", inputBaseNoExt+".srt")
+	shiftedASSPath := filepath.Join("output", inputBaseNoExt+".ass")
+
+	// Save shifted SRT
+	if err := shiftedTrack.SaveSRT(shiftedSRTPath); err != nil {
+		return "", fmt.Errorf("failed to save shifted SRT: %w", err)
+	}
+
+	// Save shifted ASS
+	style := getSubtitleStyle(preset)
+	if err := subtitle.GenerateASSFromTrack(shiftedTrack, style, shiftedASSPath); err != nil {
+		return "", fmt.Errorf("failed to generate shifted ASS: %w", err)
+	}
+
+	log.Printf("Generated shifted subtitles: %s and %s\n", shiftedSRTPath, shiftedASSPath)
+	return shiftedASSPath, nil
+}
+
+func resolveOverlaps(subs []subtitle.Subtitle) []subtitle.Subtitle {
+	if len(subs) <= 1 {
+		return subs
+	}
+
+	// 1. Sort by Start time ascending, then End time
+	sort.Slice(subs, func(i, j int) bool {
+		if subs[i].Start == subs[j].Start {
+			return subs[i].End < subs[j].End
+		}
+		return subs[i].Start < subs[j].Start
+	})
+
+	// 2. Resolve overlaps by adjusting End times
+	for i := 0; i < len(subs)-1; i++ {
+		current := &subs[i]
+		next := &subs[i+1]
+
+		if next.Start < current.End {
+			current.End = next.Start
+		}
+	}
+
+	// 3. Filter out subtitles with duration < 0.2s
+	var resolved []subtitle.Subtitle
+	for _, sub := range subs {
+		if sub.End-sub.Start >= 0.2 {
+			resolved = append(resolved, sub)
+		}
+	}
+
+	// 4. Re-index
+	for i := range resolved {
+		resolved[i].Index = i + 1
+	}
+
+	return resolved
+}
+
 func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1507,6 +1660,8 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 
 	inputVideo := s.inputVideo
 	assPath := s.assPath
+	srtPath := s.srtPath
+	preset := s.preset
 	nvenc := s.nvencAvailable
 
 	// Copy live layers from memory under lock to prevent race conditions during rendering
@@ -1542,6 +1697,15 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 	if assPath != "" {
 		if _, err := os.Stat(assPath); err == nil {
 			activeASSPath = assPath
+			// If we are trimming/concatenating, shift subtitle event timings accordingly
+			if len(req.KeepSegments) > 0 {
+				shiftedASS, err := generateShiftedSubtitles(srtPath, inputVideo, preset, req.KeepSegments)
+				if err == nil && shiftedASS != "" {
+					activeASSPath = shiftedASS
+				} else if err != nil {
+					log.Printf("Warning: failed to generate shifted subtitles: %v\n", err)
+				}
+			}
 		}
 	}
 
