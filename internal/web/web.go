@@ -166,6 +166,7 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/layout/export", s.handleExportLayout)
 	mux.HandleFunc("/api/layouts", s.handleListLayouts)
 	mux.HandleFunc("/api/layout/load", s.handleLoadLayout)
+	mux.HandleFunc("/api/layer/add", s.handleAddLayer)
 	mux.HandleFunc("/api/subtitles", s.handleGetSubtitles)
 	mux.HandleFunc("/api/subtitles/style", s.handleUpdateSubtitlesStyle)
 	mux.HandleFunc("/api/subtitles/edit", s.handleEditSubtitles)
@@ -382,6 +383,96 @@ func (s *Server) handleUpdateSize(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleAddLayer creates a new video layer sourced from the input video and appends it.
+func (s *Server) handleAddLayer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Count existing extra layers to derive a unique name
+	extraCount := 0
+	for _, l := range s.layers {
+		if strings.HasPrefix(l.Name, "extra_") {
+			extraCount++
+		}
+	}
+	layerName := fmt.Sprintf("extra_%d", extraCount+1)
+
+	// Canvas size from preset
+	canvasW := s.preset.Crop.Width
+	canvasH := s.preset.Crop.Height
+	if canvasW == 0 {
+		canvasW = 1080
+	}
+	if canvasH == 0 {
+		canvasH = 1920
+	}
+
+	// Size the new layer at half the canvas, centered
+	newW := canvasW / 2
+	newH := canvasH / 2
+	newX := (canvasW - newW) / 2
+	newY := (canvasH - newH) / 2
+
+	// Place above the current highest Z-index
+	maxZ := 0
+	for _, l := range s.layers {
+		if l.ZIndex > maxZ {
+			maxZ = l.ZIndex
+		}
+	}
+
+	newLayer := actions.RenderLayer{
+		Name:       layerName,
+		InputIndex: 0,
+		X:          newX,
+		Y:          newY,
+		Visible:    true,
+		ZIndex:     maxZ + 1,
+		Filters: []ffmpeg.Filter{
+			ffmpeg.CropPercent{
+				XPercent:      0.0,
+				YPercent:      0.0,
+				WidthPercent:  1.0,
+				HeightPercent: 1.0,
+				InputWidth:    s.inputWidth,
+				InputHeight:   s.inputHeight,
+			},
+			ffmpeg.Scale{
+				Width:     newW,
+				Height:    newH,
+				ScaleMode: "stretch",
+			},
+		},
+	}
+
+	s.layers = append(s.layers, newLayer)
+
+	resp := LayerResponse{
+		Name:              layerName,
+		X:                 newX,
+		Y:                 newY,
+		Width:             newW,
+		Height:            newH,
+		Visible:           true,
+		ZIndex:            maxZ + 1,
+		ScaleMode:         "stretch",
+		CropXPercent:      0.0,
+		CropYPercent:      0.0,
+		CropWidthPercent:  1.0,
+		CropHeightPercent: 1.0,
+		InputWidth:        s.inputWidth,
+		InputHeight:       s.inputHeight,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 func (s *Server) handleRegeneratePreview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -418,6 +509,7 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 	defer s.mu.Unlock()
 
 	// Update the underlying preset struct from layers
+	s.preset.ExtraLayers = nil
 	for _, l := range s.layers {
 		// Visible boolean pointer assignment helper
 		visibleVal := l.Visible
@@ -425,6 +517,8 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 		cropX, cropY, cropW, cropH := l.GetCrop()
 
 		switch l.Name {
+		case "bg":
+			// background layer is implicit and not saved separately
 		case "game":
 			s.preset.Gameplay.X = l.X
 			s.preset.Gameplay.Y = l.Y
@@ -461,6 +555,22 @@ func (s *Server) handleSaveLayout(w http.ResponseWriter, r *http.Request) {
 			s.preset.Overlay.CropWidthPercent = cropW
 			s.preset.Overlay.CropHeightPercent = cropH
 			s.preset.Overlay.ScaleMode = l.GetScaleMode()
+		default:
+			// Dynamic extra layer
+			s.preset.ExtraLayers = append(s.preset.ExtraLayers, preset.LayerConfig{
+				Name:              l.Name,
+				X:                 l.X,
+				Y:                 l.Y,
+				Width:             l.GetWidth(),
+				Height:            l.GetHeight(),
+				Visible:           visiblePtr,
+				ZIndex:            l.ZIndex,
+				CropXPercent:      cropX,
+				CropYPercent:      cropY,
+				CropWidthPercent:  cropW,
+				CropHeightPercent: cropH,
+				ScaleMode:         l.GetScaleMode(),
+			})
 		}
 	}
 
@@ -676,12 +786,15 @@ func (s *Server) handleExportLayout(w http.ResponseWriter, r *http.Request) {
 	destPath := filepath.Join(layoutsDir, name)
 
 	// Sync preset from layers in-memory state before exporting
+	s.preset.ExtraLayers = nil
 	for _, l := range s.layers {
 		visibleVal := l.Visible
 		var visiblePtr *bool = &visibleVal
 		cropX, cropY, cropW, cropH := l.GetCrop()
 
 		switch l.Name {
+		case "bg":
+			// background layer is implicit and not saved separately
 		case "game":
 			s.preset.Gameplay.X = l.X
 			s.preset.Gameplay.Y = l.Y
@@ -718,6 +831,22 @@ func (s *Server) handleExportLayout(w http.ResponseWriter, r *http.Request) {
 			s.preset.Overlay.CropWidthPercent = cropW
 			s.preset.Overlay.CropHeightPercent = cropH
 			s.preset.Overlay.ScaleMode = l.GetScaleMode()
+		default:
+			// Dynamic extra layer
+			s.preset.ExtraLayers = append(s.preset.ExtraLayers, preset.LayerConfig{
+				Name:              l.Name,
+				X:                 l.X,
+				Y:                 l.Y,
+				Width:             l.GetWidth(),
+				Height:            l.GetHeight(),
+				Visible:           visiblePtr,
+				ZIndex:            l.ZIndex,
+				CropXPercent:      cropX,
+				CropYPercent:      cropY,
+				CropWidthPercent:  cropW,
+				CropHeightPercent: cropH,
+				ScaleMode:         l.GetScaleMode(),
+			})
 		}
 	}
 
@@ -1303,10 +1432,11 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 	s.isRendering = true
 
 	inputVideo := s.inputVideo
-	presetPath := s.presetPath
-	inputWidth := s.inputWidth
-	inputHeight := s.inputHeight
 	assPath := s.assPath
+
+	// Copy live layers from memory under lock to prevent race conditions during rendering
+	liveLayers := make([]actions.RenderLayer, len(s.layers))
+	copy(liveLayers, s.layers)
 	s.mu.Unlock()
 
 	defer func() {
@@ -1331,16 +1461,7 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := preset.Load(presetPath)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": "failed to load preset: " + err.Error()})
-		return
-	}
-
-	concreteLayers := actions.NewLayersFromPreset(p, inputWidth, inputHeight)
-	inputArgs, activeLayers := actions.BuildRenderingGraph(concreteLayers, inputVideo)
+	inputArgs, activeLayers := actions.BuildRenderingGraph(liveLayers, inputVideo)
 
 	activeASSPath := ""
 	if assPath != "" {
@@ -1352,7 +1473,7 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 	graph := ffmpeg.BuildFilterGraph(activeLayers, activeASSPath)
 
 	log.Printf("[%s] Web API starting video rendering to: %s\n", baseName, finalOutputPath)
-	err = renderer.Render(inputArgs, finalOutputPath, graph)
+	err := renderer.Render(inputArgs, finalOutputPath, graph)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)

@@ -21,6 +21,7 @@ type Overlay struct {
 }
 
 type LayerConfig struct {
+	Name              string  `json:"name,omitempty"`
 	X                 int     `json:"x"`
 	Y                 int     `json:"y"`
 	Width             int     `json:"width"`
@@ -44,11 +45,12 @@ type SubtitlePresetConfig struct {
 }
 
 type Preset struct {
-	Crop      Crop                  `json:"crop"`
-	Overlay   Overlay               `json:"overlay"`
-	Facecam   LayerConfig           `json:"facecam"`
-	Gameplay  LayerConfig           `json:"gameplay"`
-	Subtitles *SubtitlePresetConfig `json:"subtitles,omitempty"`
+	Crop        Crop                  `json:"crop"`
+	Overlay     Overlay               `json:"overlay"`
+	Facecam     LayerConfig           `json:"facecam"`
+	Gameplay    LayerConfig           `json:"gameplay"`
+	ExtraLayers []LayerConfig         `json:"extra_layers,omitempty"`
+	Subtitles   *SubtitlePresetConfig `json:"subtitles,omitempty"`
 }
 
 type Layer struct {

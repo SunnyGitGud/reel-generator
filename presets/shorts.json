@@ -41,6 +41,22 @@
     "z_index": 1,
     "scale_mode": "stretch"
   },
+  "extra_layers": [
+    {
+      "name": "extra_1",
+      "x": 0,
+      "y": 1574,
+      "width": 1085,
+      "height": 342,
+      "crop_x_percent": 0,
+      "crop_y_percent": 0.66,
+      "crop_width_percent": 0.21999999999999997,
+      "crop_height_percent": 0.10999999999999996,
+      "visible": true,
+      "z_index": 4,
+      "scale_mode": "stretch"
+    }
+  ],
   "subtitles": {
     "font_name": "Montserrat",
     "font_size": 10,

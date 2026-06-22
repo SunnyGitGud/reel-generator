@@ -185,27 +185,27 @@ async function fetchLayout() {
         statusBadge.textContent = 'Loading...';
         const response = await fetch('/api/layout');
         const data = await response.json();
-        
+
         state.resolution = { width: data.width, height: data.height };
         state.layers = data.layers.map(layer => {
             // Default lock_ar to true for gameplay ('game') and facecam ('cam') layers
             layer.lock_ar = (layer.name === 'game' || layer.name === 'cam');
-            
+
             // Calculate Left, Right, Top, Bottom crop percents from X, Y, Width, Height crop percents
             const left = layer.crop_x_percent || 0.0;
             const top = layer.crop_y_percent || 0.0;
             const right = Math.max(0.0, 1.0 - left - (layer.crop_width_percent || 1.0));
             const bottom = Math.max(0.0, 1.0 - top - (layer.crop_height_percent || 1.0));
-            
+
             layer.crop_left = left;
             layer.crop_right = right;
             layer.crop_top = top;
             layer.crop_bottom = bottom;
-            
+
             // Get original input dimensions from API
             layer.input_width = layer.input_width || 1920;
             layer.input_height = layer.input_height || 1080;
-            
+
             // Calculate scale factor: display width / (input_width * crop_width_percent)
             const cwPct = 1.0 - left - right;
             if (cwPct > 0.001) {
@@ -213,23 +213,23 @@ async function fetchLayout() {
             } else {
                 layer.scale = 1.0;
             }
-            
+
             return layer;
         });
-        
+
         resolutionDisplay.textContent = `${data.width} × ${data.height}`;
-        
+
         // Auto-fit canvas to viewport size
         fitCanvasToViewport();
-        
+
         // Set initial preview src
         refreshPreviewSrc();
-        
+
         // Render layers
         renderLayerList();
         renderLayerFrames();
         updateUndoRedoButtonsState();
-        
+
         statusBadge.textContent = 'Connected';
         statusBadge.className = 'status-badge';
     } catch (err) {
@@ -242,15 +242,15 @@ async function fetchLayout() {
 // Render the list of layers in the sidebar
 function renderLayerList() {
     layerList.innerHTML = '';
-    
+
     // Sort display list by Z-Index descending (top layers first)
     const sortedLayers = [...state.layers].sort((a, b) => b.z_index - a.z_index);
-    
+
     sortedLayers.forEach(layer => {
         const item = document.createElement('div');
         item.className = `layer-item ${state.selectedLayerName === layer.name ? 'active' : ''}`;
         item.dataset.name = layer.name;
-        
+
         // Visible icon
         const eyeBtn = document.createElement('button');
         eyeBtn.className = `layer-visibility-toggle ${layer.visible ? '' : 'muted'}`;
@@ -259,58 +259,62 @@ function renderLayerList() {
             e.stopPropagation();
             toggleLayerVisibility(layer.name);
         });
-        
+
         const details = document.createElement('div');
         details.className = 'layer-details';
-        
+
         const titleRow = document.createElement('div');
         titleRow.style.display = 'flex';
         titleRow.style.justifyContent = 'space-between';
-        
+
         const title = document.createElement('span');
         title.className = 'layer-title-text';
         title.textContent = getLayerDisplayName(layer.name);
-        
+
         const badge = document.createElement('span');
         badge.className = 'layer-badge';
         badge.textContent = `z:${layer.z_index}`;
-        
+
         titleRow.appendChild(title);
         titleRow.appendChild(badge);
-        
+
         const coords = document.createElement('span');
         coords.className = 'layer-coords-text';
         coords.textContent = `X:${layer.x} Y:${layer.y} W:${layer.width} H:${layer.height}`;
-        
+
         details.appendChild(titleRow);
         details.appendChild(coords);
-        
+
         item.appendChild(eyeBtn);
         item.appendChild(details);
-        
+
         item.addEventListener('click', () => {
             selectLayer(layer.name);
         });
-        
+
         layerList.appendChild(item);
     });
 }
 
 // Translate system names to friendly display names
 function getLayerDisplayName(name) {
+    if (name && name.startsWith('extra_')) {
+        const num = name.substring(6);
+        return `Extra Layer ${num}`;
+    }
     switch (name) {
         case 'bg': return 'Background';
         case 'game': return 'Gameplay';
         case 'cam': return 'Facecam';
-        case 'overlay': return 'Overlay Overlay';
-        default: return name.charAt(0).toUpperCase() + name.slice(1);
+        case 'overlay': return 'Overlay';
+        default: return name ? (name.charAt(0).toUpperCase() + name.slice(1)) : '';
     }
 }
 
 // Select a layer and open transform controls
 function selectLayer(name) {
     state.selectedLayerName = name;
-    
+
     // Highlight sidebar active item
     document.querySelectorAll('.layer-item').forEach(item => {
         if (item.dataset.name === name) {
@@ -319,7 +323,7 @@ function selectLayer(name) {
             item.classList.remove('active');
         }
     });
-    
+
     // Highlight canvas active frame
     document.querySelectorAll('.layer-frame').forEach(frame => {
         if (frame.dataset.name === name) {
@@ -328,7 +332,7 @@ function selectLayer(name) {
             frame.classList.remove('active');
         }
     });
-    
+
     const layer = state.layers.find(l => l.name === name);
     if (layer) {
         selectedLayerNameDisplay.textContent = getLayerDisplayName(layer.name);
@@ -337,24 +341,24 @@ function selectLayer(name) {
         inputW.value = layer.width;
         inputH.value = layer.height;
         inputZ.value = layer.z_index;
-        
+
         // Populate Aspect Ratio / Scale Mode and Crop Sliders
         inputScaleMode.value = layer.scale_mode || 'stretch';
         inputLockAR.checked = !!layer.lock_ar;
-        
+
         scaleInput.value = Math.round((layer.scale || 1.0) * 100);
         scaleVal.textContent = `${scaleInput.value}%`;
-        
+
         cropLeft.value = Math.round((layer.crop_left || 0.0) * 100);
         cropRight.value = Math.round((layer.crop_right || 0.0) * 100);
         cropTop.value = Math.round((layer.crop_top || 0.0) * 100);
         cropBottom.value = Math.round((layer.crop_bottom || 0.0) * 100);
-        
+
         cropLeftVal.textContent = `${cropLeft.value}%`;
         cropRightVal.textContent = `${cropRight.value}%`;
         cropTopVal.textContent = `${cropTop.value}%`;
         cropBottomVal.textContent = `${cropBottom.value}%`;
-        
+
         transformPanel.style.display = 'block';
     } else {
         transformPanel.style.display = 'none';
@@ -364,16 +368,16 @@ function selectLayer(name) {
 // Generate layer frame DOM elements over the canvas preview
 function renderLayerFrames() {
     layerOverlayContainer.innerHTML = '';
-    
+
     state.layers.forEach(layer => {
         const frame = document.createElement('div');
         frame.className = `layer-frame ${state.selectedLayerName === layer.name ? 'active' : ''} ${layer.visible ? '' : 'hidden'}`;
         frame.dataset.name = layer.name;
-        
+
         // Create image container and image for real-time WYSIWYG
         const imgContainer = document.createElement('div');
         imgContainer.className = 'layer-image-container';
-        
+
         const img = document.createElement('img');
         if (layer.name === 'overlay') {
             img.src = '/api/overlay-image';
@@ -382,16 +386,16 @@ function renderLayerFrames() {
         }
         imgContainer.appendChild(img);
         frame.appendChild(imgContainer);
-        
+
         // Position layer based on zoom and coordinates
         updateFramePosition(frame, layer);
-        
+
         // Label
         const label = document.createElement('div');
         label.className = 'layer-label';
         label.textContent = getLayerDisplayName(layer.name);
         frame.appendChild(label);
-        
+
         // Resize Handles (NW, NE, SW, SE)
         const handles = ['nw', 'ne', 'sw', 'se'];
         handles.forEach(h => {
@@ -400,15 +404,15 @@ function renderLayerFrames() {
             handle.dataset.handle = h;
             frame.appendChild(handle);
         });
-        
+
         // Select on click
         frame.addEventListener('mousedown', (e) => {
             e.stopPropagation();
             selectLayer(layer.name);
             setPreviewMode(false); // Switch to real-time mode
-            
+
             pushStateToHistory();
-            
+
             // Check if clicking handle or frame itself
             if (e.target.classList.contains('resize-handle')) {
                 state.isResizing = true;
@@ -416,11 +420,11 @@ function renderLayerFrames() {
             } else {
                 state.isDragging = true;
             }
-            
+
             state.dragStart = { x: e.clientX, y: e.clientY };
             state.layerStartCoords = { x: layer.x, y: layer.y, w: layer.width, h: layer.height };
         });
-        
+
         layerOverlayContainer.appendChild(frame);
     });
 }
@@ -432,7 +436,7 @@ function updateFramePosition(frame, layer) {
     frame.style.width = `${layer.width * state.zoom}px`;
     frame.style.height = `${layer.height * state.zoom}px`;
     frame.style.zIndex = layer.z_index;
-    
+
     // Update inner image crop and scale mode in real-time
     const img = frame.querySelector('.layer-image-container img');
     if (img) {
@@ -440,18 +444,18 @@ function updateFramePosition(frame, layer) {
         let hPct = layer.crop_height_percent || 1.0;
         let xPct = layer.crop_x_percent || 0.0;
         let yPct = layer.crop_y_percent || 0.0;
-        
+
         // Clamp crop coordinates to mimic FFmpeg's internal boundary clamping
         wPct = Math.max(0.01, Math.min(1.0, wPct));
         hPct = Math.max(0.01, Math.min(1.0, hPct));
         xPct = Math.max(0.0, Math.min(1.0 - wPct, xPct));
         yPct = Math.max(0.0, Math.min(1.0 - hPct, yPct));
-        
+
         img.style.width = `${(1.0 / wPct) * 100}%`;
         img.style.height = `${(1.0 / hPct) * 100}%`;
         img.style.left = `${(-xPct / wPct) * 100}%`;
         img.style.top = `${(-yPct / hPct) * 100}%`;
-        
+
         if (layer.name === 'bg') {
             img.style.filter = 'blur(20px)';
             img.style.transform = 'scale(1.1)'; // avoids blur borders
@@ -459,7 +463,7 @@ function updateFramePosition(frame, layer) {
             img.style.filter = 'none';
             img.style.transform = 'none';
         }
-        
+
         if (wPct === 1.0 && hPct === 1.0) {
             if (layer.scale_mode === 'fit') {
                 img.style.objectFit = 'contain';
@@ -482,11 +486,11 @@ function updateFramePosition(frame, layer) {
 async function toggleLayerVisibility(name) {
     const layer = state.layers.find(l => l.name === name);
     if (!layer) return;
-    
+
     pushStateToHistory();
-    
+
     layer.visible = !layer.visible;
-    
+
     // Update local frame
     const frame = document.querySelector(`.layer-frame[data-name="${name}"]`);
     if (frame) {
@@ -496,9 +500,9 @@ async function toggleLayerVisibility(name) {
             frame.classList.add('hidden');
         }
     }
-    
+
     renderLayerList();
-    
+
     // Persist changes to server
     // (Note: we can send the updated visible flag. The API position/size can do it,
     // let's define visibility updates directly or let it be saved by saving the state).
@@ -514,7 +518,7 @@ function applyZoom() {
     canvasContainer.style.width = `${state.resolution.width * state.zoom}px`;
     canvasContainer.style.height = `${state.resolution.height * state.zoom}px`;
     zoomLabel.textContent = `${Math.round(state.zoom * 100)}%`;
-    
+
     // Re-render frames with new zoom layout
     state.layers.forEach(layer => {
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
@@ -522,7 +526,7 @@ function applyZoom() {
             updateFramePosition(frame, layer);
         }
     });
-    
+
     updateCanvasSubtitlePreview();
 }
 
@@ -530,14 +534,14 @@ function fitCanvasToViewport() {
     const viewport = document.getElementById('canvas-viewport');
     const viewportWidth = viewport.clientWidth - 80;
     const viewportHeight = viewport.clientHeight - 80;
-    
+
     const scaleX = viewportWidth / state.resolution.width;
     const scaleY = viewportHeight / state.resolution.height;
-    
+
     state.zoom = Math.min(scaleX, scaleY);
     // Keep zoom within bounds
     state.zoom = Math.max(0.1, Math.min(1.5, state.zoom));
-    
+
     applyZoom();
 }
 
@@ -611,13 +615,13 @@ function setupEventListeners() {
     // Mouse move on viewport
     window.addEventListener('mousemove', (e) => {
         if (!state.isDragging && !state.isResizing) return;
-        
+
         const dx = (e.clientX - state.dragStart.x) / state.zoom;
         const dy = (e.clientY - state.dragStart.y) / state.zoom;
-        
+
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
-        
+
         if (state.isDragging) {
             // Move layer
             layer.x = Math.round(state.layerStartCoords.x + dx);
@@ -628,7 +632,7 @@ function setupEventListeners() {
             const start = state.layerStartCoords;
             const startAspect = start.w / start.h;
             const lockAR = layer.lock_ar;
-            
+
             if (lockAR) {
                 if (handle === 'se') {
                     const newWidth = Math.max(10, start.w + dx);
@@ -680,7 +684,7 @@ function setupEventListeners() {
                     const actualDx = start.w - newWidth;
                     layer.x = Math.round(start.x + actualDx);
                     layer.width = Math.round(newWidth);
-                    
+
                     const newHeight = Math.max(10, start.h - dy);
                     const actualDy = start.h - newHeight;
                     layer.y = Math.round(start.y + actualDy);
@@ -688,7 +692,7 @@ function setupEventListeners() {
                 }
             }
         }
-        
+
         if (state.isResizing) {
             const cwPct = 1.0 - (layer.crop_left || 0.0) - (layer.crop_right || 0.0);
             if (cwPct > 0.001) {
@@ -699,25 +703,25 @@ function setupEventListeners() {
             scaleInput.value = Math.round(layer.scale * 100);
             scaleVal.textContent = `${scaleInput.value}%`;
         }
-        
+
         // Update DOM visuals instantly
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
         if (frame) {
             updateFramePosition(frame, layer);
         }
-        
+
         // Update transform values in panel
         inputX.value = layer.x;
         inputY.value = layer.y;
         inputW.value = layer.width;
         inputH.value = layer.height;
-        
+
         // Update layer details in sidebar text
         renderLayerList();
-        
+
         setPreviewMode(false); // Switch to real-time interactive mode
     });
-    
+
     // Mouse up
     window.addEventListener('mouseup', () => {
         if (state.isDragging || state.isResizing) {
@@ -734,21 +738,21 @@ function setupEventListeners() {
         state.isResizing = false;
         state.activeHandle = null;
     });
-    
+
     // Transform input box changes
     const triggerManualUpdate = (e) => {
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
-        
+
         pushStateToHistory();
-        
+
         const target = e ? e.target : null;
-        
+
         let newX = parseInt(inputX.value) || 0;
         let newY = parseInt(inputY.value) || 0;
         let newW = parseInt(inputW.value) || 10;
         let newH = parseInt(inputH.value) || 10;
-        
+
         if (layer.lock_ar && layer.width > 0 && layer.height > 0) {
             const aspect = layer.width / layer.height;
             if (target === inputW) {
@@ -759,14 +763,14 @@ function setupEventListeners() {
                 inputW.value = newW;
             }
         }
-        
+
         layer.x = newX;
         layer.y = newY;
         layer.width = newW;
         layer.height = newH;
         layer.z_index = parseInt(inputZ.value) || 0;
         layer.scale_mode = inputScaleMode.value;
-        
+
         // Update scale factor from new width
         const cwPct = 1.0 - (layer.crop_left || 0.0) - (layer.crop_right || 0.0);
         if (cwPct > 0.001) {
@@ -776,42 +780,42 @@ function setupEventListeners() {
         }
         scaleInput.value = Math.round(layer.scale * 100);
         scaleVal.textContent = `${scaleInput.value}%`;
-        
+
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
         if (frame) {
             updateFramePosition(frame, layer);
         }
-        
+
         renderLayerList();
         saveLayerPosition(layer);
         saveLayerSize(layer);
         setPreviewMode(false); // Switch to real-time interactive mode
     };
-    
+
     [inputX, inputY, inputW, inputH, inputZ, inputScaleMode].forEach(input => {
         input.addEventListener('change', triggerManualUpdate);
     });
-    
+
     inputLockAR.addEventListener('change', () => {
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (layer) {
             layer.lock_ar = inputLockAR.checked;
         }
     });
-    
+
     // Crop & Scale sliders updates
     const triggerCropUpdate = (e) => {
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
-        
+
         let left = parseFloat(cropLeft.value) || 0;
         let right = parseFloat(cropRight.value) || 0;
         let top = parseFloat(cropTop.value) || 0;
         let bottom = parseFloat(cropBottom.value) || 0;
         let scale = parseFloat(scaleInput.value) || 100;
-        
+
         const target = e ? e.target : null;
-        
+
         // Enforce boundary constraints: Left + Right <= 99% and Top + Bottom <= 99%
         if (target === cropLeft) {
             if (left + right > 99) {
@@ -834,61 +838,61 @@ function setupEventListeners() {
                 cropBottom.value = bottom;
             }
         }
-        
+
         layer.crop_left = left / 100;
         layer.crop_right = right / 100;
         layer.crop_top = top / 100;
         layer.crop_bottom = bottom / 100;
         layer.scale = scale / 100;
-        
+
         // Convert Left/Right/Top/Bottom to original X/Y/Width/Height crop percentages for backend compatibility
         layer.crop_x_percent = layer.crop_left;
         layer.crop_y_percent = layer.crop_top;
         layer.crop_width_percent = Math.max(0.01, 1.0 - layer.crop_left - layer.crop_right);
         layer.crop_height_percent = Math.max(0.01, 1.0 - layer.crop_top - layer.crop_bottom);
-        
+
         // Automatically adjust the layer's displayed size based on scale and crop
         layer.width = Math.round(layer.input_width * layer.crop_width_percent * layer.scale);
         layer.height = Math.round(layer.input_height * layer.crop_height_percent * layer.scale);
-        
+
         cropLeftVal.textContent = `${left}%`;
         cropRightVal.textContent = `${right}%`;
         cropTopVal.textContent = `${top}%`;
         cropBottomVal.textContent = `${bottom}%`;
         scaleVal.textContent = `${scale}%`;
-        
+
         // Update Width/Height inputs in transform panel
         inputW.value = layer.width;
         inputH.value = layer.height;
-        
+
         const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
         if (frame) {
             updateFramePosition(frame, layer);
         }
-        
+
         renderLayerList();
         saveLayerPosition(layer);
         saveLayerSize(layer);
         setPreviewMode(false); // Switch to real-time interactive mode
     };
-    
+
     [cropLeft, cropRight, cropTop, cropBottom, scaleInput].forEach(input => {
         input.addEventListener('input', triggerCropUpdate);
     });
-    
+
     // Keyboard arrow keys nudge
     window.addEventListener('keydown', (e) => {
         if (!state.selectedLayerName) return;
-        
+
         // Skip if typing in an input
         if (document.activeElement.tagName === 'INPUT') return;
-        
+
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
-        
+
         const step = e.shiftKey ? 10 : 1;
         let moved = false;
-        
+
         if (e.key === 'ArrowLeft') {
             layer.x -= step;
             moved = true;
@@ -902,46 +906,93 @@ function setupEventListeners() {
             layer.y += step;
             moved = true;
         }
-        
+
         if (moved) {
             e.preventDefault();
             if (!e.repeat) {
                 pushStateToHistory();
             }
-            
+
             // Update input panel
             inputX.value = layer.x;
             inputY.value = layer.y;
-            
+
             // Update DOM frame and sidebar
             const frame = document.querySelector(`.layer-frame[data-name="${layer.name}"]`);
             if (frame) {
                 updateFramePosition(frame, layer);
             }
             renderLayerList();
-            
+
             // Send position update
             saveLayerPosition(layer);
             setPreviewMode(false); // Switch to real-time interactive mode
         }
     });
-    
+
     // Action buttons
     btnRefreshPreview.addEventListener('click', () => {
         triggerPreviewRefresh(false);
     });
-    
+
+    const btnAddLayer = document.getElementById('btn-add-layer');
+    if (btnAddLayer) {
+        btnAddLayer.addEventListener('click', async () => {
+            try {
+                btnAddLayer.disabled = true;
+                const response = await fetch('/api/layer/add', {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    throw new Error('Server returned ' + response.status);
+                }
+                const newLayer = await response.json();
+                
+                // Map fields to match UI state layer structure
+                newLayer.lock_ar = false;
+                newLayer.crop_left = newLayer.crop_x_percent || 0.0;
+                newLayer.crop_top = newLayer.crop_y_percent || 0.0;
+                newLayer.crop_right = Math.max(0.0, 1.0 - newLayer.crop_left - (newLayer.crop_width_percent || 1.0));
+                newLayer.crop_bottom = Math.max(0.0, 1.0 - newLayer.crop_top - (newLayer.crop_height_percent || 1.0));
+                newLayer.input_width = newLayer.input_width || 1920;
+                newLayer.input_height = newLayer.input_height || 1080;
+                
+                const cwPct = 1.0 - newLayer.crop_left - newLayer.crop_right;
+                if (cwPct > 0.001) {
+                    newLayer.scale = newLayer.width / (newLayer.input_width * cwPct);
+                } else {
+                    newLayer.scale = 1.0;
+                }
+
+                pushStateToHistory();
+                state.layers.push(newLayer);
+                
+                renderLayerList();
+                renderLayerFrames();
+                selectLayer(newLayer.name);
+                
+                showToast(`Added ${getLayerDisplayName(newLayer.name)}`);
+                await triggerPreviewRefresh(true);
+            } catch (err) {
+                console.error('Failed to add layer:', err);
+                alert('Failed to add layer: ' + err.message);
+            } finally {
+                btnAddLayer.disabled = false;
+            }
+        });
+    }
+
     btnSaveLayout.addEventListener('click', async () => {
         try {
             btnSaveLayout.disabled = true;
             statusBadge.textContent = 'Saving...';
             statusBadge.classList.add('saving');
-            
+
             const response = await fetch('/api/layout/save', {
                 method: 'POST'
             });
             const data = await response.json();
-            
+
             if (data.status === 'success') {
                 showToast('Layout settings saved!');
             } else {
@@ -956,23 +1007,23 @@ function setupEventListeners() {
             statusBadge.classList.remove('saving');
         }
     });
-    
+
     btnExportLayout.addEventListener('click', async () => {
         const name = prompt("Enter layout name to export (e.g. splitscreen):");
         if (!name) return;
-        
+
         try {
             btnExportLayout.disabled = true;
             statusBadge.textContent = 'Exporting...';
             statusBadge.classList.add('saving');
-            
+
             const response = await fetch('/api/layout/export', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: name })
             });
             const data = await response.json();
-            
+
             if (data.status === 'success') {
                 showToast(`Layout exported as ${name}.json!`);
             } else {
@@ -987,20 +1038,20 @@ function setupEventListeners() {
             statusBadge.classList.remove('saving');
         }
     });
-    
+
     // Zoom control click listeners
     btnZoomIn.addEventListener('click', () => {
         state.zoom = Math.min(2.0, state.zoom + 0.05);
         applyZoom();
     });
-    
+
     btnZoomOut.addEventListener('click', () => {
         state.zoom = Math.max(0.1, state.zoom - 0.05);
         applyZoom();
     });
-    
+
     btnZoomFit.addEventListener('click', fitCanvasToViewport);
-    
+
     // Undo / Redo click listeners
     if (btnUndo) {
         btnUndo.addEventListener('click', undo);
@@ -1008,18 +1059,18 @@ function setupEventListeners() {
     if (btnRedo) {
         btnRedo.addEventListener('click', redo);
     }
-    
+
     // Slider interaction mousedown/keydown history pushes
     [cropLeft, cropRight, cropTop, cropBottom, scaleInput].forEach(input => {
         input.addEventListener('focus', pushStateToHistory);
         input.addEventListener('mousedown', pushStateToHistory);
         input.addEventListener('touchstart', pushStateToHistory);
     });
-    
+
     // Keyboard Ctrl+Z and Ctrl+Y/Ctrl+Shift+Z Undo/Redo listener
     window.addEventListener('keydown', (e) => {
         if (document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'range') return;
-        
+
         if (e.ctrlKey && e.key.toLowerCase() === 'z') {
             e.preventDefault();
             undo();
@@ -1028,7 +1079,7 @@ function setupEventListeners() {
             redo();
         }
     });
-    
+
     // Window resize
     window.addEventListener('resize', () => {
         // If zoom-fit or scaled down, it's nice to adapt
@@ -1163,7 +1214,7 @@ function updateCanvasSubtitlePreview() {
     canvasSubtitlePreview.style.fontFamily = `"${fontName}", sans-serif`;
     canvasSubtitlePreview.style.fontSize = `${fontSize}px`;
     canvasSubtitlePreview.style.color = primaryColor;
-    
+
     const outlineWidth = Math.max(1, Math.round(3 * state.zoom));
     canvasSubtitlePreview.style.webkitTextStroke = `${outlineWidth}px ${outlineColor}`;
     canvasSubtitlePreview.style.textShadow = `0px 0px 4px ${outlineColor}`;
@@ -1266,7 +1317,7 @@ async function fetchSubtitles() {
     try {
         const response = await fetch('/api/subtitles');
         const data = await response.json();
-        
+
         subtitleState.srtPath = data.srt_path;
         subtitleState.style = data.style || {
             font_name: 'Montserrat',
@@ -1277,7 +1328,7 @@ async function fetchSubtitles() {
             alignment: 2
         };
         subtitleState.subtitles = data.subtitles || [];
-        
+
         if (subFont) subFont.value = subtitleState.style.font_name;
         if (subSize) {
             subSize.value = subtitleState.style.font_size;
@@ -1295,7 +1346,7 @@ async function fetchSubtitles() {
             subMarginV.value = subtitleState.style.margin_v;
             subMarginVVal.textContent = `${subtitleState.style.margin_v}px`;
         }
-        
+
         updateAlignmentGridUI(subtitleState.style.alignment);
         renderSubtitleList();
         updateCanvasSubtitlePreview();
@@ -1307,28 +1358,28 @@ async function fetchSubtitles() {
 function renderSubtitleList() {
     if (!subtitlesContainer) return;
     subtitlesContainer.innerHTML = '';
-    
+
     captionCount.textContent = `${subtitleState.subtitles.length} captions`;
-    
+
     subtitleState.subtitles.forEach((sub, index) => {
         const card = document.createElement('div');
         card.className = `subtitle-card ${subtitleState.selectedSubIndex === index ? 'active' : ''}`;
         card.dataset.index = index;
-        
+
         card.addEventListener('mousedown', () => {
             selectSubtitleCard(index);
         });
-        
+
         const header = document.createElement('div');
         header.className = 'subtitle-card-header';
-        
+
         const idxLabel = document.createElement('span');
         idxLabel.className = 'subtitle-index';
         idxLabel.textContent = `INDEX #${sub.index}`;
-        
+
         const timeDiv = document.createElement('div');
         timeDiv.className = 'subtitle-time-inputs';
-        
+
         const startInput = document.createElement('input');
         startInput.type = 'number';
         startInput.step = '0.05';
@@ -1339,11 +1390,11 @@ function renderSubtitleList() {
             sub.start = val;
             saveSubtitlesDebounced();
         });
-        
+
         const sep = document.createElement('span');
         sep.className = 'subtitle-time-separator';
         sep.textContent = '→';
-        
+
         const endInput = document.createElement('input');
         endInput.type = 'number';
         endInput.step = '0.05';
@@ -1354,17 +1405,17 @@ function renderSubtitleList() {
             sub.end = val;
             saveSubtitlesDebounced();
         });
-        
+
         timeDiv.appendChild(startInput);
         timeDiv.appendChild(sep);
         timeDiv.appendChild(endInput);
-        
+
         header.appendChild(idxLabel);
         header.appendChild(timeDiv);
-        
+
         const body = document.createElement('div');
         body.className = 'subtitle-card-body';
-        
+
         const txt = document.createElement('textarea');
         txt.className = 'subtitle-text-area';
         txt.value = sub.text;
@@ -1373,7 +1424,7 @@ function renderSubtitleList() {
             updateCanvasSubtitlePreview();
             saveSubtitlesDebounced();
         });
-        
+
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-delete-subtitle';
         delBtn.innerHTML = '🗑️';
@@ -1382,13 +1433,13 @@ function renderSubtitleList() {
             e.stopPropagation();
             deleteSubtitleItem(index);
         });
-        
+
         body.appendChild(txt);
         body.appendChild(delBtn);
-        
+
         card.appendChild(header);
         card.appendChild(body);
-        
+
         subtitlesContainer.appendChild(card);
     });
 }
@@ -1399,11 +1450,11 @@ function deleteSubtitleItem(index) {
         subtitleState.subtitles.forEach((sub, i) => {
             sub.index = i + 1;
         });
-        
+
         if (subtitleState.selectedSubIndex >= subtitleState.subtitles.length) {
             subtitleState.selectedSubIndex = subtitleState.subtitles.length - 1;
         }
-        
+
         renderSubtitleList();
         updateCanvasSubtitlePreview();
         saveSubtitlesDebounced();
@@ -1443,13 +1494,13 @@ function selectSubtitleCard(index) {
 function addNewSubtitleItem() {
     let newStart = 0.0;
     let newEnd = 2.0;
-    
+
     if (subtitleState.subtitles.length > 0) {
         const lastSub = subtitleState.subtitles[subtitleState.subtitles.length - 1];
         newStart = lastSub.end + 0.1;
         newEnd = newStart + 2.0;
     }
-    
+
     const newIndex = subtitleState.subtitles.length + 1;
     const newSub = {
         index: newIndex,
@@ -1457,52 +1508,52 @@ function addNewSubtitleItem() {
         end: newEnd,
         text: 'New subtitle text'
     };
-    
+
     subtitleState.subtitles.push(newSub);
     subtitleState.selectedSubIndex = subtitleState.subtitles.length - 1;
-    
+
     renderSubtitleList();
     updateCanvasSubtitlePreview();
-    
+
     setTimeout(() => {
         if (subtitlesContainer) {
             subtitlesContainer.scrollTop = subtitlesContainer.scrollHeight;
         }
     }, 50);
-    
+
     saveSubtitlesDebounced();
 }
 
 function setupSubtitleStyleListeners() {
     if (!subFont) return;
-    
+
     subFont.addEventListener('change', () => {
         subtitleState.style.font_name = subFont.value;
         updateCanvasSubtitlePreview();
         saveSubtitleStyleDebounced();
     });
-    
+
     subSize.addEventListener('input', () => {
         subtitleState.style.font_size = parseInt(subSize.value);
         subSizeVal.textContent = `${subSize.value}px`;
         updateCanvasSubtitlePreview();
         saveSubtitleStyleDebounced();
     });
-    
+
     subMarginV.addEventListener('input', () => {
         subtitleState.style.margin_v = parseInt(subMarginV.value);
         subMarginVVal.textContent = `${subMarginV.value}px`;
         updateCanvasSubtitlePreview();
         saveSubtitleStyleDebounced();
     });
-    
+
     subPrimaryColor.addEventListener('input', () => {
         subPrimaryColorText.value = subPrimaryColor.value;
         subtitleState.style.primary_color = subPrimaryColor.value;
         updateCanvasSubtitlePreview();
         saveSubtitleStyleDebounced();
     });
-    
+
     subPrimaryColorText.addEventListener('change', () => {
         let val = subPrimaryColorText.value.trim();
         if (!val.startsWith('#')) val = '#' + val;
@@ -1513,14 +1564,14 @@ function setupSubtitleStyleListeners() {
             saveSubtitleStyleDebounced();
         }
     });
-    
+
     subOutlineColor.addEventListener('input', () => {
         subOutlineColorText.value = subOutlineColor.value;
         subtitleState.style.outline_color = subOutlineColor.value;
         updateCanvasSubtitlePreview();
         saveSubtitleStyleDebounced();
     });
-    
+
     subOutlineColorText.addEventListener('change', () => {
         let val = subOutlineColorText.value.trim();
         if (!val.startsWith('#')) val = '#' + val;
@@ -1539,12 +1590,12 @@ async function triggerPreviewRefresh(silent = false) {
             btnRefreshPreview.disabled = true;
             btnRefreshPreview.textContent = 'Generating...';
         }
-        
+
         const response = await fetch('/api/layout/preview?time=' + state.currentTime, {
             method: 'POST'
         });
         const data = await response.json();
-        
+
         if (data.status === 'success') {
             refreshPreviewSrc();
             setPreviewMode(true);
@@ -1558,7 +1609,7 @@ async function triggerPreviewRefresh(silent = false) {
     } finally {
         if (btnRefreshPreview) {
             btnRefreshPreview.disabled = false;
-            btnRefreshPreview.innerHTML = '<span class="btn-icon">🔄</span> Refresh Preview';
+            btnRefreshPreview.innerHTML = '<span class="btn-icon"></span> Refresh Preview';
         }
     }
 }
@@ -1569,12 +1620,12 @@ async function fetchTimeline() {
     try {
         const response = await fetch('/api/timeline');
         const data = await response.json();
-        
+
         state.videoDuration = data.duration;
         state.currentTime = 0.0;
-        
+
         updateTimelineUI();
-        
+
         // Render thumbnails
         if (timelineThumbnails) {
             timelineThumbnails.innerHTML = '';
@@ -1586,7 +1637,7 @@ async function fetchTimeline() {
                 timelineThumbnails.appendChild(img);
             }
         }
-        
+
         setupTimelineScrubbing();
     } catch (err) {
         console.error('Error fetching timeline data:', err);
@@ -1595,53 +1646,53 @@ async function fetchTimeline() {
 
 function updateTimelineUI() {
     if (!timelineInfo || !timelinePlayhead) return;
-    
+
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         const c = Math.floor((seconds - Math.floor(seconds)) * 100);
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${c.toString().padStart(2, '0')}`;
     };
-    
+
     timelineInfo.textContent = `${formatTime(state.currentTime)} / ${formatTime(state.videoDuration)}`;
-    
+
     const pct = state.videoDuration > 0 ? (state.currentTime / state.videoDuration) * 100 : 0;
     timelinePlayhead.style.left = `${pct}%`;
 }
 
 function setupTimelineScrubbing() {
     if (!timelineTrack) return;
-    
+
     let isScrubbing = false;
-    
+
     const handleScrub = (clientX) => {
         const rect = timelineTrack.getBoundingClientRect();
         let pct = (clientX - rect.left) / rect.width;
         pct = Math.max(0.0, Math.min(1.0, pct));
-        
+
         state.currentTime = pct * state.videoDuration;
         updateTimelineUI();
-        
+
         // Update canvas overlay reference frames
         document.querySelectorAll('.layer-frame img').forEach(img => {
             if (img.src.includes('/api/raw-frame.png')) {
                 img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
             }
         });
-        
+
         setPreviewMode(false);
     };
-    
+
     timelineTrack.addEventListener('mousedown', (e) => {
         isScrubbing = true;
         handleScrub(e.clientX);
     });
-    
+
     window.addEventListener('mousemove', (e) => {
         if (!isScrubbing) return;
         handleScrub(e.clientX);
     });
-    
+
     window.addEventListener('mouseup', () => {
         isScrubbing = false;
     });
@@ -1672,7 +1723,7 @@ async function handleCreateProject() {
         const response = await fetch('/api/project/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 url: url,
                 skip_subtitles: !includeSubtitles
             })
@@ -1685,12 +1736,12 @@ async function handleCreateProject() {
                 overlay.style.display = 'none';
                 document.getElementById('front-page').style.display = 'none';
                 document.getElementById('editor-container').style.display = 'flex';
-                
+
                 fetchLayout();
                 fetchSubtitles();
                 fetchTimeline();
                 fetchPresetLayouts();
-                
+
                 btn.disabled = false;
                 input.disabled = false;
                 if (chkSubtitles) {
@@ -1827,7 +1878,7 @@ async function handleLoadPresetLayout(e) {
         if (data.status === 'success') {
             showToast(`Applied layout: ${name}`);
             await fetchLayout();
-            
+
             document.querySelectorAll('.layer-frame img').forEach(img => {
                 if (img.src.includes('/api/raw-frame.png')) {
                     img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
@@ -1863,13 +1914,13 @@ function switchViewMode(mode) {
         btn.classList.toggle('active', btn.dataset.mode === mode);
     });
 
-    const canvasViewport  = document.getElementById('canvas-viewport');
-    const videoPanel      = document.getElementById('video-panel');
+    const canvasViewport = document.getElementById('canvas-viewport');
+    const videoPanel = document.getElementById('video-panel');
     const timelineSection = document.getElementById('timeline-section');
-    const vidSource       = document.getElementById('vid-source');
-    const vidOutput       = document.getElementById('vid-output');
-    const slotSource      = document.getElementById('video-slot-source');
-    const slotOutput      = document.getElementById('video-slot-output');
+    const vidSource = document.getElementById('vid-source');
+    const vidOutput = document.getElementById('vid-output');
+    const slotSource = document.getElementById('video-slot-source');
+    const slotOutput = document.getElementById('video-slot-output');
 
     // Pause both videos when switching
     if (vidSource) vidSource.pause();
@@ -1877,12 +1928,12 @@ function switchViewMode(mode) {
     vcUpdatePlayBtn(false);
 
     if (mode === 'editor') {
-        canvasViewport.style.display  = '';
-        videoPanel.style.display      = 'none';
+        canvasViewport.style.display = '';
+        videoPanel.style.display = 'none';
         timelineSection.style.display = '';
     } else {
-        canvasViewport.style.display  = 'none';
-        videoPanel.style.display      = 'flex';
+        canvasViewport.style.display = 'none';
+        videoPanel.style.display = 'flex';
         timelineSection.style.display = 'none';
 
         if (mode === 'source') {
@@ -1947,7 +1998,7 @@ function vcTick() {
 
 function vcUpdateTime(cur, dur) {
     const fmt = s => {
-        const m   = Math.floor(s / 60);
+        const m = Math.floor(s / 60);
         const sec = Math.floor(s % 60).toString().padStart(2, '0');
         return `${m}:${sec}`;
     };
@@ -1961,14 +2012,14 @@ function vcUpdatePlayBtn(playing) {
 }
 
 function setupVideoPlayer() {
-    const vidSource  = document.getElementById('vid-source');
-    const vidOutput  = document.getElementById('vid-output');
-    const btnPlay    = document.getElementById('vc-playpause');
+    const vidSource = document.getElementById('vid-source');
+    const vidOutput = document.getElementById('vid-output');
+    const btnPlay = document.getElementById('vc-playpause');
     const btnRestart = document.getElementById('vc-restart');
-    const seekInput  = document.getElementById('vc-seek');
-    const muteBtn    = document.getElementById('vc-mute');
-    const volInput   = document.getElementById('vc-volume');
-    const fsBtn      = document.getElementById('vc-fullscreen');
+    const seekInput = document.getElementById('vc-seek');
+    const muteBtn = document.getElementById('vc-mute');
+    const volInput = document.getElementById('vc-volume');
+    const fsBtn = document.getElementById('vc-fullscreen');
 
     if (!vidSource) return;
 

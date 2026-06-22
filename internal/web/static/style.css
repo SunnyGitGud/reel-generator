@@ -1,31 +1,31 @@
 :root {
     /* Palette: Dusk-Blue → Dusty-Lavender → Rosewood → Light-Coral → Light-Bronze */
-    --dusk-blue:        #355070;
-    --dusty-lavender:   #6d597a;
-    --rosewood:         #b56576;
-    --light-coral:      #e56b6f;
-    --light-bronze:     #eaac8b;
+    --dusk-blue: #355070;
+    --dusty-lavender: #6d597a;
+    --rosewood: #b56576;
+    --light-coral: #e56b6f;
+    --light-bronze: #eaac8b;
 
     /* Backgrounds — derived from dusk-blue, darkened */
-    --bg-primary:       #0b1220;
-    --bg-sidebar:       #111c2e;
-    --bg-panel:         #1a2840;
+    --bg-primary: #0b1220;
+    --bg-sidebar: #111c2e;
+    --bg-panel: #1a2840;
 
     /* Borders — mid dusk-blue */
-    --border-color:     #2d4060;
+    --border-color: #2d4060;
 
     /* Text */
-    --text-main:        #f0eaf5;
-    --text-muted:       #9a8faa;
+    --text-main: #f0eaf5;
+    --text-muted: #9a8faa;
 
     /* Accent: light-coral for CTAs, progress, highlights */
-    --color-accent:       var(--light-coral);
+    --color-accent: var(--light-coral);
     --color-accent-hover: var(--rosewood);
 
     /* Semantic */
-    --color-success:       #6ee7b7;
+    --color-success: #6ee7b7;
     --color-success-hover: #34d399;
-    --color-danger:        var(--light-coral);
+    --color-danger: var(--light-coral);
 
     /* Selection */
     --selection-color: var(--light-bronze);
@@ -242,7 +242,8 @@ body {
     color: var(--text-muted);
 }
 
-.input-group input, .z-index-row input {
+.input-group input,
+.z-index-row input {
     background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     color: var(--text-main);
@@ -255,7 +256,8 @@ body {
     transition: border-color 0.15s ease;
 }
 
-.input-group input:focus, .z-index-row input:focus {
+.input-group input:focus,
+.z-index-row input:focus {
     border-color: var(--color-accent);
 }
 
@@ -408,7 +410,7 @@ body {
     display: flex;
     align-items: center;
     gap: 2px;
-    background: rgba(0,0,0,0.25);
+    background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 3px;
@@ -430,7 +432,7 @@ body {
 }
 
 .view-mode-btn:hover {
-    background: rgba(255,255,255,0.07);
+    background: rgba(255, 255, 255, 0.07);
     color: var(--text-main);
 }
 
@@ -474,8 +476,8 @@ body {
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.6);
-    background: rgba(0,0,0,0.5);
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.5);
     padding: 3px 8px;
     border-radius: 4px;
     pointer-events: none;
@@ -500,7 +502,7 @@ body {
 }
 
 .vc-btn {
-    background: rgba(255,255,255,0.06);
+    background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--border-color);
     color: var(--text-main);
     width: 34px;
@@ -517,7 +519,7 @@ body {
 }
 
 .vc-btn:hover {
-    background: rgba(255,255,255,0.12);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .vc-progress-wrap {
@@ -532,7 +534,7 @@ body {
     position: relative;
     width: 100%;
     height: 4px;
-    background: rgba(255,255,255,0.12);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     overflow: visible;
 }
@@ -595,7 +597,8 @@ body {
     background-color: #0c1626;
     user-select: none;
     transform-origin: center center;
-    overflow: visible; /* Let out of bound layers overflow */
+    overflow: visible;
+    /* Let out of bound layers overflow */
 }
 
 .canvas-bg {
@@ -605,9 +608,9 @@ body {
     width: 100%;
     height: 100%;
     background-image: linear-gradient(45deg, #0e1829 25%, transparent 25%),
-                      linear-gradient(-45deg, #0e1829 25%, transparent 25%),
-                      linear-gradient(45deg, transparent 75%, #0e1829 75%),
-                      linear-gradient(-45deg, transparent 75%, #0e1829 75%);
+        linear-gradient(-45deg, #0e1829 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #0e1829 75%),
+        linear-gradient(-45deg, transparent 75%, #0e1829 75%);
     background-size: 20px 20px;
     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
     z-index: 1;
@@ -656,7 +659,8 @@ body {
     border: 2px solid var(--light-bronze);
     background-color: rgba(229, 107, 111, 0.07);
     box-shadow: 0 0 14px rgba(229, 107, 111, 0.22);
-    z-index: 100 !important; /* Force active to be top visual frame */
+    z-index: 100 !important;
+    /* Force active to be top visual frame */
 }
 
 .layer-frame.hidden {
@@ -956,7 +960,8 @@ body {
 /* Canvas Subtitle preview style overlay */
 .canvas-subtitle {
     position: absolute;
-    z-index: 50; /* Above overlays but below outline borders of layers */
+    z-index: 50;
+    /* Above overlays but below outline borders of layers */
     pointer-events: none;
     text-align: center;
     white-space: pre-wrap;
@@ -1145,6 +1150,11 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }

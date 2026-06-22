@@ -6,6 +6,7 @@ import (
 	_ "image/png"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/yourname/video-editor/internal/ffmpeg"
 	"github.com/yourname/video-editor/internal/preset"
@@ -386,7 +387,56 @@ func NewLayersFromPreset(p *preset.Preset, inputWidth, inputHeight int) []Render
 		Filters:    overlayFilters,
 	}
 
-	return []RenderLayer{bgLayer, gameLayer, camLayer, overlayLayer}
+	layers := []RenderLayer{bgLayer, gameLayer, camLayer, overlayLayer}
+
+	for _, extra := range p.ExtraLayers {
+		extraVisible := getVisible(extra.Visible)
+		extraZIndex := extra.ZIndex
+		extraWidth := extra.Width
+		extraHeight := extra.Height
+
+		extraCropX := extra.CropXPercent
+		extraCropY := extra.CropYPercent
+		extraCropW := extra.CropWidthPercent
+		extraCropH := extra.CropHeightPercent
+		if extraCropW == 0 && extraCropH == 0 {
+			extraCropW = 1.0
+			extraCropH = 1.0
+		}
+
+		extraScaleMode := extra.ScaleMode
+		if extraScaleMode == "" {
+			extraScaleMode = "stretch"
+		}
+
+		extraFilters := []ffmpeg.Filter{
+			ffmpeg.CropPercent{
+				XPercent:      extraCropX,
+				YPercent:      extraCropY,
+				WidthPercent:  extraCropW,
+				HeightPercent: extraCropH,
+				InputWidth:    inputWidth,
+				InputHeight:   inputHeight,
+			},
+			ffmpeg.Scale{
+				Width:     extraWidth,
+				Height:    extraHeight,
+				ScaleMode: extraScaleMode,
+			},
+		}
+
+		layers = append(layers, RenderLayer{
+			Name:       extra.Name,
+			InputIndex: 0,
+			X:          extra.X,
+			Y:          extra.Y,
+			Visible:    extraVisible,
+			ZIndex:     extraZIndex,
+			Filters:    extraFilters,
+		})
+	}
+
+	return layers
 }
 
 func NewBackgroundLayer() RenderLayer {
@@ -468,8 +518,15 @@ func BuildRenderingGraph(concreteLayers []RenderLayer, inputVideoPath string) ([
 	imageToIndex := make(map[string]int)
 	currentIndex := 1
 
+	// Sort a copy of concreteLayers by ZIndex ascending so overlay ordering is correct in FFmpeg
+	layersCopy := make([]RenderLayer, len(concreteLayers))
+	copy(layersCopy, concreteLayers)
+	sort.SliceStable(layersCopy, func(i, j int) bool {
+		return layersCopy[i].ZIndex < layersCopy[j].ZIndex
+	})
+
 	var activeLayers []ffmpeg.RenderLayer
-	for _, layer := range concreteLayers {
+	for _, layer := range layersCopy {
 		if !layer.Visible {
 			continue
 		}
