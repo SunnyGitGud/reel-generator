@@ -15,36 +15,49 @@ Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,1
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:01.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Max speed Max
 Dialogue: 0,0:00:01.00,0:00:02.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}speed Max speed
-Dialogue: 0,0:00:02.00,0:00:04.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
-Dialogue: 0,0:00:04.00,0:00:06.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
-Dialogue: 0,0:00:06.00,0:00:08.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
-Dialogue: 0,0:00:08.00,0:00:10.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
-Dialogue: 0,0:00:18.00,0:00:18.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}What nigger did
-Dialogue: 0,0:00:18.85,0:00:19.71,TikTok,,0,0,0,,{%c&H00B4E7FF&}that to me
-Dialogue: 0,0:00:19.71,0:00:20.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro?
-Dialogue: 0,0:00:20.00,0:00:22.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
-Dialogue: 0,0:00:22.00,0:00:24.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Which fucking
-Dialogue: 0,0:00:24.00,0:00:26.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Asshole
-Dialogue: 0,0:00:26.00,0:00:26.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}I went through
-Dialogue: 0,0:00:26.75,0:00:27.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}torture for that
-Dialogue: 0,0:00:27.50,0:00:28.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}shit bro
-Dialogue: 0,0:00:30.00,0:00:32.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
-Dialogue: 0,0:00:32.00,0:00:34.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
-Dialogue: 0,0:00:34.00,0:00:35.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
-Dialogue: 0,0:00:35.00,0:00:36.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
-Dialogue: 0,0:00:36.00,0:00:37.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
-Dialogue: 0,0:00:37.00,0:00:38.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
-Dialogue: 0,0:00:38.00,0:00:39.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
-Dialogue: 0,0:00:39.00,0:00:40.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
-Dialogue: 0,0:00:40.00,0:00:42.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
-Dialogue: 0,0:00:42.00,0:00:44.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}These people
-Dialogue: 0,0:00:44.00,0:00:45.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}These fucking simps
-Dialogue: 0,0:00:45.50,0:00:46.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro
-Dialogue: 0,0:00:46.00,0:00:47.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}These simps fucking
-Dialogue: 0,0:00:47.00,0:00:48.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}guarding her bro
-Dialogue: 0,0:00:48.00,0:00:50.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}Not letting her
-Dialogue: 0,0:00:50.00,0:00:52.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}People touch her
-Dialogue: 0,0:00:52.00,0:00:53.20,TikTok,,0,0,0,,{%c&H00B4E7FF&}This shit is
-Dialogue: 0,0:00:53.20,0:00:54.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}so stupid
-Dialogue: 0,0:00:56.00,0:00:58.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I can't
-Dialogue: 0,0:01:00.00,0:01:02.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}I kind of
+Dialogue: 0,0:00:02.00,0:00:02.35,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:02.35,0:00:03.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:03.75,0:00:04.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:04.85,0:00:05.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:05.75,0:00:07.45,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:07.45,0:00:07.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}Makisa
+Dialogue: 0,0:00:07.75,0:00:09.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:17.75,0:00:18.60,TikTok,,0,0,0,,{%c&H00B4E7FF&}What nigger did
+Dialogue: 0,0:00:18.60,0:00:19.46,TikTok,,0,0,0,,{%c&H00B4E7FF&}that to me
+Dialogue: 0,0:00:19.46,0:00:19.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro?
+Dialogue: 0,0:00:19.75,0:00:21.00,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:21.00,0:00:21.34,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:21.34,0:00:21.69,TikTok,,0,0,0,,{%c&H00B4E7FF&}Which fucking
+Dialogue: 0,0:00:21.69,0:00:22.50,TikTok,,0,0,0,,{%c&H00B4E7FF&}Which fucking
+Dialogue: 0,0:00:22.50,0:00:23.44,TikTok,,0,0,0,,{%c&H00B4E7FF&}Asshole
+Dialogue: 0,0:00:23.44,0:00:23.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}Asshole
+Dialogue: 0,0:00:23.75,0:00:24.44,TikTok,,0,0,0,,{%c&H00B4E7FF&}I went through
+Dialogue: 0,0:00:24.44,0:00:25.19,TikTok,,0,0,0,,{%c&H00B4E7FF&}torture for that
+Dialogue: 0,0:00:25.19,0:00:25.69,TikTok,,0,0,0,,{%c&H00B4E7FF&}shit bro
+Dialogue: 0,0:00:27.14,0:00:27.80,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
+Dialogue: 0,0:00:27.80,0:00:29.05,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
+Dialogue: 0,0:00:29.05,0:00:30.40,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
+Dialogue: 0,0:00:30.40,0:00:30.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}I am
+Dialogue: 0,0:00:30.75,0:00:31.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
+Dialogue: 0,0:00:31.85,0:00:32.65,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:32.65,0:00:33.45,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
+Dialogue: 0,0:00:33.45,0:00:33.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:33.75,0:00:34.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:34.25,0:00:35.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}Get me out
+Dialogue: 0,0:00:35.25,0:00:35.45,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:35.45,0:00:35.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}of here bro
+Dialogue: 0,0:00:35.85,0:00:36.40,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:36.40,0:00:37.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}What the fuck
+Dialogue: 0,0:00:37.70,0:00:39.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}These people
+Dialogue: 0,0:00:39.70,0:00:41.20,TikTok,,0,0,0,,{%c&H00B4E7FF&}These fucking simps
+Dialogue: 0,0:00:41.20,0:00:41.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro
+Dialogue: 0,0:00:41.70,0:00:42.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}These simps fucking
+Dialogue: 0,0:00:42.70,0:00:43.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}guarding her bro
+Dialogue: 0,0:00:43.80,0:00:45.15,TikTok,,0,0,0,,{%c&H00B4E7FF&}Not letting her
+Dialogue: 0,0:00:45.15,0:00:45.45,TikTok,,0,0,0,,{%c&H00B4E7FF&}Not letting her
+Dialogue: 0,0:00:45.45,0:00:47.45,TikTok,,0,0,0,,{%c&H00B4E7FF&}People touch her
+Dialogue: 0,0:00:47.45,0:00:47.85,TikTok,,0,0,0,,{%c&H00B4E7FF&}This shit is
+Dialogue: 0,0:00:47.85,0:00:48.40,TikTok,,0,0,0,,{%c&H00B4E7FF&}This shit is
+Dialogue: 0,0:00:48.45,0:00:49.25,TikTok,,0,0,0,,{%c&H00B4E7FF&}so stupid
+Dialogue: 0,0:00:49.90,0:00:51.55,TikTok,,0,0,0,,{%c&H00B4E7FF&}I can't
+Dialogue: 0,0:00:51.90,0:00:52.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}I kind of

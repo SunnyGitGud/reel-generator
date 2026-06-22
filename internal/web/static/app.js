@@ -171,6 +171,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             fetchSubtitles();
             fetchTimeline();
             fetchPresetLayouts();
+            refreshVideoSources();
         } else {
             document.getElementById('front-page').style.display = 'flex';
             document.getElementById('editor-container').style.display = 'none';
@@ -1875,6 +1876,7 @@ async function handleCreateProject() {
                 fetchSubtitles();
                 fetchTimeline();
                 fetchPresetLayouts();
+                refreshVideoSources();
 
                 btn.disabled = false;
                 input.disabled = false;
@@ -1923,6 +1925,7 @@ async function handleRenderVideo() {
         if (data.status === 'success') {
             showToast('Video rendered successfully! Saved to output folder.');
             alert('Video rendered successfully!\nSaved to: ' + data.output);
+            refreshOutputVideoSource();
         } else {
             alert('Rendering failed: ' + data.error);
         }
@@ -2148,6 +2151,28 @@ function vcUpdateTime(cur, dur) {
 function vcUpdatePlayBtn(playing) {
     const btn = document.getElementById('vc-playpause');
     if (btn) btn.textContent = playing ? '⏸' : '▶';
+}
+
+function refreshVideoSources() {
+    const vidSource = document.getElementById('vid-source');
+    const vidOutput = document.getElementById('vid-output');
+    const bust = Date.now();
+    if (vidSource) {
+        vidSource.src = `/api/video/source?t=${bust}`;
+        vidSource.load();
+    }
+    if (vidOutput) {
+        vidOutput.src = `/api/video/output?t=${bust}`;
+        vidOutput.load();
+    }
+}
+
+function refreshOutputVideoSource() {
+    const vidOutput = document.getElementById('vid-output');
+    if (vidOutput) {
+        vidOutput.src = `/api/video/output?t=${Date.now()}`;
+        vidOutput.load();
+    }
 }
 
 function setupVideoPlayer() {
