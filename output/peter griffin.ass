@@ -14,7 +14,7 @@ Style: TikTok,Montserrat,10,&H00FFFF&,&H00FFFFFF,&H000000&,&H00000000,-1,0,0,0,1
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,0:00:01.37,TikTok,,0,0,0,,{%c&H00B4E7FF&}yeah i mean
-Dialogue: 0,0:00:01.37,0:00:02.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}she's not mocking
+Dialogue: 0,0:00:01.37,0:00:02.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}she's not mogging
 Dialogue: 0,0:00:02.75,0:00:04.13,TikTok,,0,0,0,,{%c&H00B4E7FF&}like what the
 Dialogue: 0,0:00:04.13,0:00:05.51,TikTok,,0,0,0,,{%c&H00B4E7FF&}fuck is this sunny
 Dialogue: 0,0:00:05.51,0:00:06.90,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro what what
@@ -22,7 +22,7 @@ Dialogue: 0,0:00:06.90,0:00:08.27,TikTok,,0,0,0,,{%c&H00B4E7FF&}the hell what
 Dialogue: 0,0:00:08.27,0:00:09.19,TikTok,,0,0,0,,{%c&H00B4E7FF&}the hell
 Dialogue: 0,0:00:11.27,0:00:13.01,TikTok,,0,0,0,,{%c&H00B4E7FF&}what the hell
 Dialogue: 0,0:00:13.01,0:00:14.75,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro what the
-Dialogue: 0,0:00:14.75,0:00:16.48,TikTok,,0,0,0,,{%c&H00B4E7FF&}hell yantai like
+Dialogue: 0,0:00:14.75,0:00:16.48,TikTok,,0,0,0,,{%c&H00B4E7FF&}helliante
 Dialogue: 0,0:00:16.48,0:00:18.22,TikTok,,0,0,0,,{%c&H00B4E7FF&}what is this
 Dialogue: 0,0:00:18.22,0:00:18.80,TikTok,,0,0,0,,{%c&H00B4E7FF&}bro
 Dialogue: 0,0:00:18.80,0:00:21.02,TikTok,,0,0,0,,{%c&H00B4E7FF&}what is this
@@ -31,11 +31,11 @@ Dialogue: 0,0:00:23.25,0:00:25.48,TikTok,,0,0,0,,{%c&H00B4E7FF&}optimal this is
 Dialogue: 0,0:00:25.48,0:00:27.70,TikTok,,0,0,0,,{%c&H00B4E7FF&}not optimal bro
 Dialogue: 0,0:00:27.70,0:00:29.93,TikTok,,0,0,0,,{%c&H00B4E7FF&}what the fuck
 Dialogue: 0,0:00:29.93,0:00:32.15,TikTok,,0,0,0,,{%c&H00B4E7FF&}this is some
-Dialogue: 0,0:00:32.15,0:00:33.65,TikTok,,0,0,0,,{%c&H00B4E7FF&}peter griffin bell
+Dialogue: 0,0:00:32.15,0:00:33.65,TikTok,,0,0,0,,{%c&H00B4E7FF&}peter griffin build
 Dialogue: 0,0:00:33.65,0:00:34.15,TikTok,,0,0,0,,{%c&H00B4E7FF&}no
 Dialogue: 0,0:00:39.91,0:00:41.11,TikTok,,0,0,0,,{%c&H00B4E7FF&}peter griffin
 Dialogue: 0,0:00:45.51,0:00:46.41,TikTok,,0,0,0,,{%c&H00B4E7FF&}i'm no bad
-Dialogue: 0,0:00:46.41,0:00:47.31,TikTok,,0,0,0,,{%c&H00B4E7FF&}no bad no
+Dialogue: 0,0:00:46.41,0:00:47.31,TikTok,,0,0,0,,{%c&H00B4E7FF&}my bad my
 Dialogue: 0,0:00:47.31,0:00:48.21,TikTok,,0,0,0,,{%c&H00B4E7FF&}bad hey hey
 Dialogue: 0,0:00:48.21,0:00:49.11,TikTok,,0,0,0,,{%c&H00B4E7FF&}we are not
 Dialogue: 0,0:00:49.11,0:00:50.01,TikTok,,0,0,0,,{%c&H00B4E7FF&}objectifying woman here

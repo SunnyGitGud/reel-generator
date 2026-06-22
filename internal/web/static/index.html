@@ -269,15 +269,69 @@
 
             <!-- Seekable Timeline -->
             <div class="timeline-section" id="timeline-section">
-                <div class="timeline-header">
-                    <div class="timeline-title">🎬 Video Seek timeline</div>
-                    <div class="timeline-info" id="timeline-info">00:00.00 / 00:00.00</div>
-                </div>
-                <div class="timeline-track" id="timeline-track">
-                    <div class="timeline-thumbnails" id="timeline-thumbnails">
-                        <!-- Dynamic thumbnail images -->
+                <div class="timeline-header" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="timeline-title" style="font-weight: 600; font-size: 0.85rem;">🎬 Timeline</span>
+                        <div class="timeline-zoom-controls" style="display: flex; gap: 4px;">
+                            <button id="btn-timeline-zoom-out" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" title="Zoom Out Timeline">Zoom -</button>
+                            <button id="btn-timeline-zoom-in" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" title="Zoom In Timeline">Zoom +</button>
+                        </div>
                     </div>
-                    <div class="timeline-playhead" id="timeline-playhead" style="left: 0%;"></div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button id="btn-add-cut" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" title="Add manual cut at current playhead">+ Cut</button>
+                        <span class="timeline-info" id="timeline-info" style="font-family: monospace; font-size: 0.8rem;">00:00.00 / 00:00.00</span>
+                    </div>
+                </div>
+                
+                <!-- Silence Detection Panel -->
+                <div class="silence-panel" style="display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 12px; background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-size: 0.75rem; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="select-aggression" style="font-weight: 600;">Smart Cut:</label>
+                        <select id="select-aggression" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-main); padding: 2px 6px; border-radius: 4px; outline: none; cursor: pointer;">
+                            <option value="custom">Custom Settings</option>
+                            <option value="very-conservative">Very Conservative</option>
+                            <option value="conservative">Conservative</option>
+                            <option value="normal" selected>Normal Auto-Cut</option>
+                            <option value="aggressive">Aggressive</option>
+                            <option value="very-aggressive">Very Aggressive</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="input-threshold">Threshold:</label>
+                        <input type="range" id="input-threshold" min="-60" max="-10" value="-35" style="width: 80px; cursor: pointer;">
+                        <span id="label-threshold">-35 dB</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="input-min-duration">Min Duration:</label>
+                        <input type="range" id="input-min-duration" min="100" max="2000" value="300" step="50" style="width: 80px; cursor: pointer;">
+                        <span id="label-min-duration">300ms</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="input-padding-before">Pad Before:</label>
+                        <input type="range" id="input-padding-before" min="0" max="1000" value="100" step="50" style="width: 80px; cursor: pointer;">
+                        <span id="label-padding-before">100ms</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label for="input-padding-after">Pad After:</label>
+                        <input type="range" id="input-padding-after" min="0" max="1000" value="150" step="50" style="width: 80px; cursor: pointer;">
+                        <span id="label-padding-after">150ms</span>
+                    </div>
+                </div>
+
+                <div class="timeline-viewport" id="timeline-viewport" style="position: relative; overflow-x: auto; width: 100%; height: 120px; background-color: #1a1a1a;">
+                    <div class="timeline-track" id="timeline-track" style="position: relative; height: 100%; min-width: 100%; width: 100%; user-select: none;">
+                        <canvas id="waveform-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;"></canvas>
+                        <div class="timeline-thumbnails" id="timeline-thumbnails" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.12; pointer-events: none; display: flex; z-index: 0;">
+                            <!-- Dynamic thumbnail images -->
+                        </div>
+                        <div class="cuts-container" id="cuts-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;">
+                            <!-- Dynamic cut overlay blocks -->
+                        </div>
+                        <div class="timeline-ruler" id="timeline-ruler" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; z-index: 3; pointer-events: none; border-top: 1px solid rgba(255,255,255,0.08);"></div>
+                        <div class="timeline-playhead" id="timeline-playhead" style="position: absolute; top: 0; bottom: 0; width: 2px; background-color: var(--color-accent); z-index: 4; pointer-events: none; left: 0%;">
+                            <div style="position: absolute; top: 0; left: -5px; width: 12px; height: 12px; background-color: var(--color-accent); border-radius: 50%;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

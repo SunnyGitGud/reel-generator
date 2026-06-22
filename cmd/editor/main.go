@@ -441,13 +441,14 @@ func main() {
 			// Build dynamic input files list and map overlay layers
 			inputArgs, activeLayers := actions.BuildRenderingGraph(concreteLayers, videoInputPath)
 
-			graph := ffmpeg.BuildFilterGraph(activeLayers, assFileToUse)
+			graph := ffmpeg.BuildFilterGraph(activeLayers, assFileToUse, nil)
 
 			log.Printf("[%s] Starting video rendering...\n", baseName)
 			err = renderer.Render(
 				inputArgs,
 				finalOutputPath,
 				graph,
+				false,
 			)
 			if err != nil {
 				log.Printf("[%s] Rendering failed: %v\n", baseName, err)

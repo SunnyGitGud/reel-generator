@@ -1158,3 +1158,108 @@ body {
         transform: rotate(360deg);
     }
 }
+
+/* Waveform Timeline Zoom and Cuts Overlay Styles */
+.timeline-viewport::-webkit-scrollbar {
+    height: 8px;
+}
+.timeline-viewport::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+}
+.timeline-viewport::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+.timeline-viewport::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.timeline-cut {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(229, 107, 111, 0.22);
+    border-left: 1px solid var(--light-coral);
+    border-right: 1px solid var(--light-coral);
+    backdrop-filter: blur(1px);
+    transition: background-color 0.15s;
+    pointer-events: auto; /* enable pointer events inside cuts-container */
+}
+
+.timeline-cut:hover {
+    background-color: rgba(229, 107, 111, 0.35);
+}
+
+/* Drag Handles */
+.cut-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background-color: var(--light-coral);
+    cursor: col-resize;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.timeline-cut:hover .cut-handle {
+    opacity: 0.8;
+}
+
+.cut-handle:hover {
+    opacity: 1 !important;
+}
+
+.cut-handle.left-handle {
+    left: -3px;
+}
+
+.cut-handle.right-handle {
+    right: -3px;
+}
+
+/* Remove button on hover */
+.cut-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: var(--text-main);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, background-color 0.15s;
+    z-index: 10;
+    padding: 0;
+}
+
+.timeline-cut:hover .cut-remove-btn {
+    opacity: 0.8;
+}
+
+.cut-remove-btn:hover {
+    background: var(--color-danger);
+    opacity: 1 !important;
+}
+
+.cut-label {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    pointer-events: none;
+    user-select: none;
+    letter-spacing: 0.05em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}

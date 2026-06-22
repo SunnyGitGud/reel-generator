@@ -514,7 +514,7 @@ func NewGameplayLayer(inputWidth, inputHeight int) RenderLayer {
 
 // BuildRenderingGraph resolves input indices for image overlays and compiles the inputs arguments for FFmpeg
 func BuildRenderingGraph(concreteLayers []RenderLayer, inputVideoPath string) ([]string, []ffmpeg.RenderLayer) {
-	inputArgs := []string{"-i", inputVideoPath}
+	inputArgs := []string{"-hwaccel", "auto", "-i", inputVideoPath}
 	imageToIndex := make(map[string]int)
 	currentIndex := 1
 

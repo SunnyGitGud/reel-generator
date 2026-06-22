@@ -12,7 +12,13 @@ let state = {
     undoStack: [],
     redoStack: [],
     currentTime: 0.0,
-    videoDuration: 0.0
+    videoDuration: 0.0,
+    
+    // Audio / Cuts timeline additions
+    timelineZoom: 1.0,
+    audioData: null,
+    cuts: [],
+    activeCutDrag: null
 };
 
 // Subtitle State
@@ -152,6 +158,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => switchViewMode(btn.dataset.mode));
     });
     setupVideoPlayer();
+    setupSilenceDetectionControls();
 
     // Check project status on load
     try {
@@ -1639,6 +1646,42 @@ async function fetchTimeline() {
         }
 
         setupTimelineScrubbing();
+
+        // Fetch audio analysis for waveform and silences
+        try {
+            const selectAggression = document.getElementById('select-aggression');
+            if (selectAggression) {
+                selectAggression.value = 'normal'; // Reset to default on video load
+                const preset = aggressionPresets['normal'];
+                document.getElementById('input-threshold').value = preset.threshold;
+                document.getElementById('input-min-duration').value = preset.minDur;
+                document.getElementById('input-padding-before').value = preset.padBefore;
+                document.getElementById('input-padding-after').value = preset.padAfter;
+                
+                // Trigger update labels
+                const labelThreshold = document.getElementById('label-threshold');
+                const labelMinDur = document.getElementById('label-min-duration');
+                const labelPadBefore = document.getElementById('label-padding-before');
+                const labelPadAfter = document.getElementById('label-padding-after');
+                if (labelThreshold) labelThreshold.textContent = `${preset.threshold} dB`;
+                if (labelMinDur) labelMinDur.textContent = `${preset.minDur}ms`;
+                if (labelPadBefore) labelPadBefore.textContent = `${preset.padBefore}ms`;
+                if (labelPadAfter) labelPadAfter.textContent = `${preset.padAfter}ms`;
+            }
+
+            const audioResponse = await fetch('/api/audio/analysis');
+            if (audioResponse.ok) {
+                state.audioData = await audioResponse.json();
+                
+                // Calculate cuts
+                recalculateAutoCuts();
+                
+                // Draw timeline elements
+                applyTimelineZoom();
+            }
+        } catch (audioErr) {
+            console.error('Failed to load audio analysis data:', audioErr);
+        }
     } catch (err) {
         console.error('Error fetching timeline data:', err);
     }
@@ -1684,16 +1727,26 @@ function setupTimelineScrubbing() {
     };
 
     timelineTrack.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.timeline-cut')) {
+            return;
+        }
         isScrubbing = true;
         handleScrub(e.clientX);
     });
 
     window.addEventListener('mousemove', (e) => {
+        if (state.activeCutDrag) {
+            handleDraggingCutHandle(e.clientX);
+            return;
+        }
         if (!isScrubbing) return;
         handleScrub(e.clientX);
     });
 
     window.addEventListener('mouseup', () => {
+        if (state.activeCutDrag) {
+            stopDraggingCutHandle();
+        }
         isScrubbing = false;
     });
 }
@@ -1776,8 +1829,13 @@ async function handleRenderVideo() {
         statusBadge.classList.add('saving');
         showToast('Video rendering started in background...');
 
+        const keeps = getKeepSegments();
         const response = await fetch('/api/project/render', {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                keep_segments: keeps
+            })
         });
         const data = await response.json();
 
@@ -2094,3 +2152,443 @@ function setupVideoPlayer() {
         v.addEventListener('ended', () => vcUpdatePlayBtn(false));
     });
 }
+
+// Silence Detection & Waveform Timeline Logic
+
+const aggressionPresets = {
+    'very-conservative': { threshold: -45, minDur: 600, padBefore: 250, padAfter: 300 },
+    'conservative': { threshold: -40, minDur: 450, padBefore: 200, padAfter: 250 },
+    'normal': { threshold: -35, minDur: 300, padBefore: 100, padAfter: 150 },
+    'aggressive': { threshold: -30, minDur: 200, padBefore: 50, padAfter: 100 },
+    'very-aggressive': { threshold: -25, minDur: 150, padBefore: 0, padAfter: 50 }
+};
+
+function detectSilences(dbPoints, thresholdDb, minSilenceDurationMs, paddingBeforeMs, paddingAfterMs) {
+    const pointsCount = dbPoints.length;
+    if (pointsCount === 0) return [];
+
+    const intervalMs = 50; // 50ms per point
+    const minSilencePoints = Math.ceil(minSilenceDurationMs / intervalMs);
+    const paddingBeforePoints = Math.round(paddingBeforeMs / intervalMs);
+    const paddingAfterPoints = Math.round(paddingAfterMs / intervalMs);
+
+    const cuts = [];
+    let silenceStartIdx = -1;
+
+    for (let i = 0; i < pointsCount; i++) {
+        const isSilentPoint = dbPoints[i] <= thresholdDb;
+
+        if (isSilentPoint) {
+            if (silenceStartIdx === -1) {
+                silenceStartIdx = i;
+            }
+        } else {
+            if (silenceStartIdx !== -1) {
+                const durationPoints = i - silenceStartIdx;
+                if (durationPoints >= minSilencePoints) {
+                    const cutStartIdx = silenceStartIdx + paddingAfterPoints;
+                    const cutEndIdx = i - paddingBeforePoints;
+
+                    if (cutStartIdx < cutEndIdx) {
+                        cuts.push({
+                            id: Math.random(),
+                            start: cutStartIdx * (intervalMs / 1000.0),
+                            end: cutEndIdx * (intervalMs / 1000.0),
+                            manual: false
+                        });
+                    }
+                }
+                silenceStartIdx = -1;
+            }
+        }
+    }
+
+    if (silenceStartIdx !== -1) {
+        const durationPoints = pointsCount - silenceStartIdx;
+        if (durationPoints >= minSilencePoints) {
+            const cutStartIdx = silenceStartIdx + paddingAfterPoints;
+            const cutEndIdx = pointsCount - 1;
+            if (cutStartIdx < cutEndIdx) {
+                cuts.push({
+                    id: Math.random(),
+                    start: cutStartIdx * (intervalMs / 1000.0),
+                    end: cutEndIdx * (intervalMs / 1000.0),
+                    manual: false
+                });
+            }
+        }
+    }
+
+    return cuts;
+}
+
+function recalculateAutoCuts() {
+    if (!state.audioData) return;
+
+    const threshold = parseFloat(document.getElementById('input-threshold').value);
+    const minDur = parseInt(document.getElementById('input-min-duration').value);
+    const padBefore = parseInt(document.getElementById('input-padding-before').value);
+    const padAfter = parseInt(document.getElementById('input-padding-after').value);
+
+    // Retain manual cuts
+    const manualCuts = state.cuts.filter(c => c.manual);
+
+    // Auto-detect cuts using db readings
+    const autoCuts = detectSilences(state.audioData.db, threshold, minDur, padBefore, padAfter);
+
+    state.cuts = [...manualCuts, ...autoCuts];
+    
+    sortAndMergeCuts();
+    renderCuts();
+}
+
+function sortAndMergeCuts() {
+    if (state.cuts.length === 0) return;
+
+    state.cuts.sort((a, b) => a.start - b.start);
+
+    const merged = [];
+    let current = state.cuts[0];
+
+    for (let i = 1; i < state.cuts.length; i++) {
+        const next = state.cuts[i];
+
+        if (next.start <= current.end + 0.05) {
+            current.end = Math.max(current.end, next.end);
+            if (next.manual) current.manual = true;
+        } else {
+            merged.push(current);
+            current = next;
+        }
+    }
+    merged.push(current);
+    state.cuts = merged;
+}
+
+function drawWaveform() {
+    const canvas = document.getElementById('waveform-canvas');
+    if (!canvas || !state.audioData) return;
+
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const peaks = state.audioData.peaks;
+    const count = peaks.length;
+    if (count === 0) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const midY = height / 2;
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(width, midY);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(234, 172, 139, 0.42)'; // var(--light-bronze) at ~42% opacity
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    for (let x = 0; x < width; x++) {
+        const pct = x / width;
+        const dataIdx = Math.floor(pct * count);
+        if (dataIdx >= count) break;
+
+        const amplitude = peaks[dataIdx] || 0.0;
+        const lineH = amplitude * (height * 0.70);
+
+        ctx.moveTo(x, midY - lineH / 2);
+        ctx.lineTo(x, midY + lineH / 2);
+    }
+    ctx.stroke();
+}
+
+function drawRuler() {
+    const ruler = document.getElementById('timeline-ruler');
+    if (!ruler || !state.videoDuration) return;
+
+    ruler.innerHTML = '';
+
+    let interval = 5.0; 
+    if (state.timelineZoom > 7.0) {
+        interval = 0.5;
+    } else if (state.timelineZoom > 4.5) {
+        interval = 1.0;
+    } else if (state.timelineZoom > 2.0) {
+        interval = 2.0;
+    } else if (state.timelineZoom < 0.5) {
+        interval = 30.0;
+    }
+
+    const duration = state.videoDuration;
+    const ticksCount = Math.floor(duration / interval);
+
+    for (let i = 0; i <= ticksCount; i++) {
+        const time = i * interval;
+        const pct = (time / duration) * 100;
+
+        const tick = document.createElement('div');
+        tick.style.position = 'absolute';
+        tick.style.left = `${pct}%`;
+        tick.style.bottom = '0';
+        tick.style.width = '1px';
+        tick.style.height = '6px';
+        tick.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+
+        if (i % 2 === 0 || interval <= 1.0) {
+            const label = document.createElement('div');
+            label.style.position = 'absolute';
+            label.style.left = `${pct}%`;
+            label.style.bottom = '8px';
+            label.style.transform = 'translateX(-50%)';
+            label.style.fontSize = '0.65rem';
+            label.style.color = 'var(--text-muted)';
+            label.style.fontFamily = 'monospace';
+            
+            const m = Math.floor(time / 60);
+            const s = Math.floor(time % 60);
+            const ms = Math.floor((time % 1) * 10);
+            if (interval < 1.0) {
+                label.textContent = `${m}:${s.toString().padStart(2, '0')}.${ms}`;
+            } else {
+                label.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+            }
+            ruler.appendChild(label);
+        }
+
+        ruler.appendChild(tick);
+    }
+}
+
+function renderCuts() {
+    const container = document.getElementById('cuts-container');
+    if (!container || !state.videoDuration) return;
+
+    container.innerHTML = '';
+    const duration = state.videoDuration;
+
+    state.cuts.forEach(cut => {
+        const cutDiv = document.createElement('div');
+        cutDiv.className = 'timeline-cut';
+        cutDiv.style.left = `${(cut.start / duration) * 100}%`;
+        cutDiv.style.width = `${((cut.end - cut.start) / duration) * 100}%`;
+        cutDiv.dataset.id = cut.id;
+
+        const label = document.createElement('span');
+        label.className = 'cut-label';
+        label.textContent = `Cut: ${(cut.end - cut.start).toFixed(1)}s`;
+        cutDiv.appendChild(label);
+
+        const leftHandle = document.createElement('div');
+        leftHandle.className = 'cut-handle left-handle';
+        leftHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            startDraggingCutHandle(cut.id, 'left', e.clientX);
+        });
+        cutDiv.appendChild(leftHandle);
+
+        const rightHandle = document.createElement('div');
+        rightHandle.className = 'cut-handle right-handle';
+        rightHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            startDraggingCutHandle(cut.id, 'right', e.clientX);
+        });
+        cutDiv.appendChild(rightHandle);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'cut-remove-btn';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.title = 'Remove Cut';
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeCut(cut.id);
+        });
+        cutDiv.appendChild(removeBtn);
+
+        container.appendChild(cutDiv);
+    });
+}
+
+function startDraggingCutHandle(cutId, handleType, startX) {
+    const cut = state.cuts.find(c => c.id === cutId);
+    if (!cut) return;
+
+    state.activeCutDrag = {
+        cutId: cutId,
+        handleType: handleType,
+        startX: startX,
+        startVal: handleType === 'left' ? cut.start : cut.end
+    };
+
+    document.body.style.cursor = 'col-resize';
+}
+
+function handleDraggingCutHandle(clientX) {
+    if (!state.activeCutDrag || !state.videoDuration) return;
+
+    const drag = state.activeCutDrag;
+    const track = document.getElementById('timeline-track');
+    const trackWidth = track.clientWidth;
+    
+    const dx = clientX - drag.startX;
+    const dt = (dx / trackWidth) * state.videoDuration;
+
+    const cut = state.cuts.find(c => c.id === drag.cutId);
+    if (!cut) return;
+
+    cut.manual = true;
+
+    if (drag.handleType === 'left') {
+        const newVal = Math.max(0.0, Math.min(cut.end - 0.05, drag.startVal + dt));
+        cut.start = newVal;
+    } else if (drag.handleType === 'right') {
+        const newVal = Math.max(cut.start + 0.05, Math.min(state.videoDuration, drag.startVal + dt));
+        cut.end = newVal;
+    }
+
+    renderCuts();
+}
+
+function stopDraggingCutHandle() {
+    if (!state.activeCutDrag) return;
+
+    state.activeCutDrag = null;
+    document.body.style.cursor = '';
+
+    sortAndMergeCuts();
+    renderCuts();
+}
+
+function addManualCutAtPlayhead() {
+    if (!state.videoDuration) return;
+
+    // Default manual cut width is 2 seconds (1s before, 1s after current playhead)
+    const start = Math.max(0.0, state.currentTime - 1.0);
+    const end = Math.min(state.videoDuration, state.currentTime + 1.0);
+
+    state.cuts.push({
+        id: Math.random(),
+        start: start,
+        end: end,
+        manual: true
+    });
+
+    sortAndMergeCuts();
+    renderCuts();
+    showToast('Added manual cut overlay');
+}
+
+function removeCut(id) {
+    state.cuts = state.cuts.filter(c => c.id !== id);
+    renderCuts();
+    showToast('Cut segment removed');
+}
+
+function getKeepSegments() {
+    const sortedCuts = [...state.cuts].sort((a, b) => a.start - b.start);
+    const keeps = [];
+    let current = 0.0;
+
+    for (const cut of sortedCuts) {
+        if (cut.start > current + 0.01) {
+            keeps.push({ start: current, end: cut.start });
+        }
+        current = Math.max(current, cut.end);
+    }
+
+    if (current < state.videoDuration - 0.01) {
+        keeps.push({ start: current, end: state.videoDuration });
+    }
+
+    return keeps;
+}
+
+function setupSilenceDetectionControls() {
+    const selectAggression = document.getElementById('select-aggression');
+    const inputThreshold = document.getElementById('input-threshold');
+    const inputMinDur = document.getElementById('input-min-duration');
+    const inputPadBefore = document.getElementById('input-padding-before');
+    const inputPadAfter = document.getElementById('input-padding-after');
+    const btnAddCut = document.getElementById('btn-add-cut');
+
+    const labelThreshold = document.getElementById('label-threshold');
+    const labelMinDur = document.getElementById('label-min-duration');
+    const labelPadBefore = document.getElementById('label-padding-before');
+    const labelPadAfter = document.getElementById('label-padding-after');
+
+    const updateLabels = () => {
+        if (labelThreshold) labelThreshold.textContent = `${inputThreshold.value} dB`;
+        if (labelMinDur) labelMinDur.textContent = `${inputMinDur.value}ms`;
+        if (labelPadBefore) labelPadBefore.textContent = `${inputPadBefore.value}ms`;
+        if (labelPadAfter) labelPadAfter.textContent = `${inputPadAfter.value}ms`;
+    };
+
+    if (selectAggression) {
+        selectAggression.addEventListener('change', () => {
+            const presetName = selectAggression.value;
+            if (presetName === 'custom') return;
+
+            const preset = aggressionPresets[presetName];
+            if (preset) {
+                inputThreshold.value = preset.threshold;
+                inputMinDur.value = preset.minDur;
+                inputPadBefore.value = preset.padBefore;
+                inputPadAfter.value = preset.padAfter;
+
+                updateLabels();
+                recalculateAutoCuts();
+            }
+        });
+    }
+
+    [inputThreshold, inputMinDur, inputPadBefore, inputPadAfter].forEach(input => {
+        if (input) {
+            input.addEventListener('input', () => {
+                if (selectAggression) selectAggression.value = 'custom';
+                updateLabels();
+                recalculateAutoCuts();
+            });
+        }
+    });
+
+    if (btnAddCut) {
+        btnAddCut.addEventListener('click', addManualCutAtPlayhead);
+    }
+
+    const btnTimelineZoomIn = document.getElementById('btn-timeline-zoom-in');
+    const btnTimelineZoomOut = document.getElementById('btn-timeline-zoom-out');
+
+    if (btnTimelineZoomIn) {
+        btnTimelineZoomIn.addEventListener('click', () => {
+            state.timelineZoom = Math.min(10.0, state.timelineZoom + 0.5);
+            applyTimelineZoom();
+        });
+    }
+
+    if (btnTimelineZoomOut) {
+        btnTimelineZoomOut.addEventListener('click', () => {
+            state.timelineZoom = Math.max(1.0, state.timelineZoom - 0.5);
+            applyTimelineZoom();
+        });
+    }
+}
+
+function applyTimelineZoom() {
+    const track = document.getElementById('timeline-track');
+    if (!track) return;
+
+    track.style.width = `${state.timelineZoom * 100}%`;
+
+    drawWaveform();
+    drawRuler();
+    renderCuts();
+    updateTimelineUI();
+}
+

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/yourname/video-editor/internal/actions"
+	"github.com/yourname/video-editor/internal/audio"
 	"github.com/yourname/video-editor/internal/ffmpeg"
 	"github.com/yourname/video-editor/internal/preset"
 	"github.com/yourname/video-editor/internal/preview"
@@ -42,6 +44,7 @@ type Server struct {
 	httpServer     *http.Server
 	cliURL         string
 	isRendering    bool
+	nvencAvailable bool
 }
 
 type LayerResponse struct {
@@ -90,6 +93,15 @@ type ExportRequest struct {
 	Name string `json:"name"`
 }
 
+func checkNVENC() bool {
+	cmd := exec.Command("ffmpeg", "-encoders")
+	out, err := cmd.Output()
+	if err == nil && strings.Contains(string(out), "h264_nvenc") {
+		return true
+	}
+	return false
+}
+
 func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int, previewPath string, srtPath string, assPath string) (*Server, error) {
 	p, err := preset.Load(presetPath)
 	if err != nil {
@@ -98,6 +110,12 @@ func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int
 
 	concreteLayers := actions.NewLayersFromPreset(p, inputWidth, inputHeight)
 	previewService := preview.NewPreviewService(inputVideo)
+	nvenc := checkNVENC()
+	if nvenc {
+		log.Println("Nvidia NVENC hardware acceleration detected!")
+	} else {
+		log.Println("Nvidia NVENC not detected. Falling back to CPU (libx264).")
+	}
 
 	return &Server{
 		presetPath:     presetPath,
@@ -110,6 +128,7 @@ func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int
 		previewPath:    previewPath,
 		srtPath:        srtPath,
 		assPath:        assPath,
+		nvencAvailable: nvenc,
 	}, nil
 }
 
@@ -172,6 +191,7 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/subtitles/edit", s.handleEditSubtitles)
 	mux.HandleFunc("/api/timeline", s.handleGetTimeline)
 	mux.HandleFunc("/api/timeline/thumbnail", s.handleServeTimelineThumbnail)
+	mux.HandleFunc("/api/audio/analysis", s.handleAudioAnalysis)
 	mux.HandleFunc("/api/preview.png", s.handleServePreviewImage)
 	mux.HandleFunc("/api/raw-frame.png", s.handleServeRawFrameImage)
 	mux.HandleFunc("/api/overlay-image", s.handleServeOverlayImage)
@@ -1245,6 +1265,47 @@ func (s *Server) handleServeTimelineThumbnail(w http.ResponseWriter, r *http.Req
 	http.ServeFile(w, r, thumbPath)
 }
 
+func (s *Server) handleAudioAnalysis(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.mu.Lock()
+	videoPath := s.inputVideo
+	s.mu.Unlock()
+
+	if videoPath == "" {
+		http.Error(w, "no active project", http.StatusBadRequest)
+		return
+	}
+
+	baseName := filepath.Base(videoPath)
+	inputBaseNoExt := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	jsonPath := filepath.Join("output", inputBaseNoExt+"_audio.json")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Check if already cached
+	if fileExists(jsonPath) {
+		http.ServeFile(w, r, jsonPath)
+		return
+	}
+
+	// Run analysis
+	log.Printf("[%s] Running audio analysis for waveform and silences...\n", baseName)
+	result, err := audio.AnalyzeAudio(videoPath, jsonPath)
+	if err != nil {
+		log.Printf("Audio analysis failed for %s: %v\n", videoPath, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(result)
+}
+
+
 type ProjectStatusResponse struct {
 	Active     bool   `json:"active"`
 	InputVideo string `json:"input_video"`
@@ -1415,10 +1476,23 @@ func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "success", "video": videoPath})
 }
 
+type RenderRequest struct {
+	KeepSegments []ffmpeg.KeepSegment `json:"keep_segments"`
+}
+
 func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	var req RenderRequest
+	if r.Body != nil {
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&req); err != nil && err != io.EOF {
+			http.Error(w, "invalid json body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	s.mu.Lock()
@@ -1433,6 +1507,7 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 
 	inputVideo := s.inputVideo
 	assPath := s.assPath
+	nvenc := s.nvencAvailable
 
 	// Copy live layers from memory under lock to prevent race conditions during rendering
 	liveLayers := make([]actions.RenderLayer, len(s.layers))
@@ -1470,10 +1545,10 @@ func (s *Server) handleProjectRender(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	graph := ffmpeg.BuildFilterGraph(activeLayers, activeASSPath)
+	graph := ffmpeg.BuildFilterGraph(activeLayers, activeASSPath, req.KeepSegments)
 
 	log.Printf("[%s] Web API starting video rendering to: %s\n", baseName, finalOutputPath)
-	err := renderer.Render(inputArgs, finalOutputPath, graph)
+	err := renderer.Render(inputArgs, finalOutputPath, graph, nvenc)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
