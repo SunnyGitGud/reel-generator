@@ -1,0 +1,10 @@
+# Build executable
+*.exe
+
+# Ignore everything inside output, but keep the directory tracked
+output/*
+!output/.gitkeep
+
+# Ignore everything inside videos, but keep the directory tracked
+videos/*
+!videos/.gitkeep
