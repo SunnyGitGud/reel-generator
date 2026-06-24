@@ -18,7 +18,8 @@ let state = {
     timelineZoom: 1.0,
     audioData: null,
     cuts: [],
-    activeCutDrag: null
+    activeCutDrag: null,
+    savedCuts: null
 };
 
 // Subtitle State
@@ -957,8 +958,9 @@ function setupEventListeners() {
     window.addEventListener('keydown', (e) => {
         if (!state.selectedLayerName) return;
 
-        // Skip if typing in an input
-        if (document.activeElement.tagName === 'INPUT') return;
+        // Skip if typing in an input, textarea, select, or editable element
+        const activeTag = document.activeElement.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || document.activeElement.isContentEditable) return;
 
         const layer = state.layers.find(l => l.name === state.selectedLayerName);
         if (!layer) return;
@@ -1143,7 +1145,8 @@ function setupEventListeners() {
 
     // Keyboard Ctrl+Z, Ctrl+Y Undo/Redo, and 'S' Split listeners
     window.addEventListener('keydown', (e) => {
-        if (document.activeElement.tagName === 'INPUT' && document.activeElement.type !== 'range') return;
+        const activeTag = document.activeElement.tagName;
+        if ((activeTag === 'INPUT' && document.activeElement.type !== 'range') || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || document.activeElement.isContentEditable) return;
 
         if (e.ctrlKey && e.key.toLowerCase() === 'z') {
             e.preventDefault();
@@ -1551,22 +1554,24 @@ function selectSubtitleCard(index) {
     });
     updateCanvasSubtitlePreview();
 
-    // Jump to the subtitle's start frame on selection
+    // Jump to the subtitle's start frame on selection (only in editor mode)
     if (index >= 0 && index < subtitleState.subtitles.length) {
         const sub = subtitleState.subtitles[index];
-        state.currentTime = sub.start;
-        updateTimelineUI();
+        if (currentViewMode === 'editor') {
+            state.currentTime = sub.start;
+            updateTimelineUI();
 
-        // Update canvas layer frames with the frame at seeked position
-        document.querySelectorAll('.layer-frame img').forEach(img => {
-            if (img.src.includes('/api/raw-frame.png')) {
-                img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
-            }
-        });
-        setPreviewMode(false);
+            // Update canvas layer frames with the frame at seeked position
+            document.querySelectorAll('.layer-frame img').forEach(img => {
+                if (img.src.includes('/api/raw-frame.png')) {
+                    img.src = `/api/raw-frame.png?time=${state.currentTime}&t=${Date.now()}`;
+                }
+            });
+            setPreviewMode(false);
 
-        // Automatically refresh the preview frame at this timestamp
-        triggerPreviewRefresh(true);
+            // Automatically refresh the preview frame at this timestamp
+            triggerPreviewRefresh(true);
+        }
     }
 }
 
@@ -1729,6 +1734,13 @@ async function fetchTimeline() {
 
         setupTimelineScrubbing();
 
+        // Reset the select entire video toggle on new project load
+        const chkSelectEntireVideo = document.getElementById('chk-select-entire-video');
+        if (chkSelectEntireVideo) {
+            chkSelectEntireVideo.checked = false;
+            toggleEntireVideoMode(false);
+        }
+
         // Fetch audio analysis for waveform and silences
         try {
             const selectAggression = document.getElementById('select-aggression');
@@ -1809,7 +1821,7 @@ function setupTimelineScrubbing() {
     };
 
     timelineTrack.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.timeline-cut')) {
+        if (e.target.closest('.cut-handle') || e.target.closest('.cut-remove-btn') || e.target.closest('.cut-disable-btn')) {
             return;
         }
         isScrubbing = true;
@@ -2329,6 +2341,7 @@ function detectSilences(dbPoints, thresholdDb, minSilenceDurationMs, paddingBefo
 }
 
 function recalculateAutoCuts() {
+    if (document.getElementById('chk-select-entire-video')?.checked) return;
     if (!state.audioData) return;
 
     const threshold = parseFloat(document.getElementById('input-threshold').value);
@@ -2503,10 +2516,14 @@ function renderCuts() {
 
     container.innerHTML = '';
     const duration = state.videoDuration;
+    const isEntireVideo = document.getElementById('chk-select-entire-video')?.checked;
 
     state.cuts.forEach((cut, idx) => {
         const cutDiv = document.createElement('div');
         cutDiv.className = 'timeline-cut';
+        if (isEntireVideo) {
+            cutDiv.classList.add('entire-video');
+        }
         if (cut.disabled) {
             cutDiv.classList.add('disabled');
         }
@@ -2578,6 +2595,7 @@ function renderCuts() {
 }
 
 function startDraggingCutHandle(cutId, handleType, startX) {
+    if (document.getElementById('chk-select-entire-video')?.checked) return;
     const cut = state.cuts.find(c => c.id === cutId);
     if (!cut) return;
 
@@ -2633,6 +2651,10 @@ function stopDraggingCutHandle() {
 }
 
 function splitSegmentAtPlayhead() {
+    if (document.getElementById('chk-select-entire-video')?.checked) {
+        showToast('Cannot add cuts while Select Entire Video is enabled.');
+        return;
+    }
     if (!state.videoDuration) return;
     const t = state.currentTime;
 
@@ -2684,6 +2706,13 @@ function renderSidebarSegments() {
     const list = document.getElementById('sidebar-segments-list');
     if (!list) return;
     list.innerHTML = '';
+
+    const isEntireVideo = document.getElementById('chk-select-entire-video')?.checked;
+    if (isEntireVideo) {
+        list.classList.add('entire-video-active');
+    } else {
+        list.classList.remove('entire-video-active');
+    }
 
     state.cuts.forEach((seg, idx) => {
         const item = document.createElement('div');
@@ -2915,6 +2944,74 @@ function setupSilenceDetectionControls() {
             applyTimelineZoom();
         });
     }
+
+    const chkSelectEntireVideo = document.getElementById('chk-select-entire-video');
+    if (chkSelectEntireVideo) {
+        chkSelectEntireVideo.addEventListener('change', () => {
+            toggleEntireVideoMode(chkSelectEntireVideo.checked);
+        });
+    }
+}
+
+function toggleEntireVideoMode(enabled) {
+    const container = document.getElementById('silence-detection-controls-container');
+    const selectAggression = document.getElementById('select-aggression');
+    const inputThreshold = document.getElementById('input-threshold');
+    const inputMinDur = document.getElementById('input-min-duration');
+    const inputPadBefore = document.getElementById('input-padding-before');
+    const inputPadAfter = document.getElementById('input-padding-after');
+    const btnAddCut = document.getElementById('btn-add-cut');
+
+    // Enable/disable inputs
+    [selectAggression, inputThreshold, inputMinDur, inputPadBefore, inputPadAfter].forEach(el => {
+        if (el) el.disabled = enabled;
+    });
+
+    if (container) {
+        if (enabled) {
+            container.style.opacity = '0.5';
+            container.style.pointerEvents = 'none';
+        } else {
+            container.style.opacity = '1.0';
+            container.style.pointerEvents = 'auto';
+        }
+    }
+
+    if (btnAddCut) {
+        btnAddCut.disabled = enabled;
+        if (enabled) {
+            btnAddCut.title = 'Cannot add cuts while Select Entire Video is enabled.';
+            btnAddCut.style.opacity = '0.5';
+            btnAddCut.style.cursor = 'not-allowed';
+        } else {
+            btnAddCut.title = 'Add manual cut at current playhead';
+            btnAddCut.style.opacity = '1.0';
+            btnAddCut.style.cursor = 'pointer';
+        }
+    }
+
+    if (enabled) {
+        // Save existing cuts before replacing them
+        state.savedCuts = [...state.cuts];
+
+        state.cuts = [{
+            id: Math.random(),
+            start: 0.0,
+            end: state.videoDuration || 0.0,
+            disabled: false
+        }];
+    } else {
+        // Restore saved cuts if they exist, else recalculate
+        if (state.savedCuts && state.savedCuts.length > 0) {
+            state.cuts = state.savedCuts;
+            state.savedCuts = null;
+        } else {
+            recalculateAutoCuts();
+        }
+    }
+
+    renderCuts();
+    renderSidebarSegments();
 }
 
 function applyTimelineZoom() {
