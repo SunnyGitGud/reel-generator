@@ -113,6 +113,16 @@ func NewServer(presetPath string, inputVideo string, inputWidth, inputHeight int
 		return nil, fmt.Errorf("failed to load preset: %w", err)
 	}
 
+	if inputVideo != "" {
+		if w, h, err := getVideoDimensions(inputVideo); err == nil {
+			inputWidth = w
+			inputHeight = h
+			log.Printf("NewServer: probed and loaded video dimensions %dx%d for %s", w, h, inputVideo)
+		} else {
+			log.Printf("NewServer: failed to probe dimensions for %s, using defaults %dx%d: %v", inputVideo, inputWidth, inputHeight, err)
+		}
+	}
+
 	concreteLayers := actions.NewLayersFromPreset(p, inputWidth, inputHeight)
 	previewService := preview.NewPreviewService(inputVideo)
 	nvenc := checkNVENC()
@@ -1192,6 +1202,27 @@ func getVideoDuration(inputPath string) (float64, error) {
 	return duration, nil
 }
 
+func getVideoDimensions(inputPath string) (int, int, error) {
+	cmd := exec.Command("ffprobe",
+		"-v", "error",
+		"-select_streams", "v:0",
+		"-show_entries", "stream=width,height",
+		"-of", "csv=s=x:p=0",
+		inputPath,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	var w, h int
+	_, err = fmt.Sscanf(strings.TrimSpace(string(out)), "%dx%d", &w, &h)
+	if err != nil {
+		return 0, 0, err
+	}
+	return w, h, nil
+}
+
+
 type TimelineResponse struct {
 	Duration float64 `json:"duration"`
 	Count    int     `json:"count"`
@@ -1477,7 +1508,16 @@ func (s *Server) handleProjectCreate(w http.ResponseWriter, r *http.Request) {
 		assPath = ""
 	}
 
+	wDim, hDim, errDim := getVideoDimensions(videoPath)
+
 	s.mu.Lock()
+	if errDim == nil {
+		s.inputWidth = wDim
+		s.inputHeight = hDim
+		log.Printf("[%s] Detected video dimensions: %dx%d", baseName, wDim, hDim)
+	} else {
+		log.Printf("[%s] Failed to probe video dimensions, using defaults %dx%d: %v", baseName, s.inputWidth, s.inputHeight, errDim)
+	}
 	s.inputVideo = videoPath
 	s.srtPath = srtPath
 	s.assPath = assPath

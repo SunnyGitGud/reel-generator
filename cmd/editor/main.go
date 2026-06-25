@@ -236,6 +236,16 @@ func main() {
 			log.Printf("========================================\n")
 
 			baseName := filepath.Base(videoInputPath)
+			w, h, errDim := getVideoDimensions(videoInputPath)
+			if errDim == nil {
+				inputWidth = w
+				inputHeight = h
+				log.Printf("[%s] Detected video dimensions: %dx%d\n", baseName, inputWidth, inputHeight)
+			} else {
+				log.Printf("[%s] Failed to probe video dimensions, defaulting to 1920x1080: %v\n", baseName, errDim)
+				inputWidth = 1920
+				inputHeight = 1080
+			}
 			inputBaseNoExt := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 			finalOutputPath := filepath.Join("output", baseName)
 
@@ -586,4 +596,24 @@ func getYTFilename(youtubeURL string, cookiesPath string) string {
 		return strings.TrimSpace(string(out))
 	}
 	return ""
+}
+
+func getVideoDimensions(inputPath string) (int, int, error) {
+	cmd := exec.Command("ffprobe",
+		"-v", "error",
+		"-select_streams", "v:0",
+		"-show_entries", "stream=width,height",
+		"-of", "csv=s=x:p=0",
+		inputPath,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	var w, h int
+	_, err = fmt.Sscanf(strings.TrimSpace(string(out)), "%dx%d", &w, &h)
+	if err != nil {
+		return 0, 0, err
+	}
+	return w, h, nil
 }
